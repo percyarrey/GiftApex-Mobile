@@ -1,0 +1,23 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+.mybg {
+  background-color: #003d29;
+}
+.font-roboto {
+  font-family:
+    roboto, "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+}
+.mytxt {
+  /* color: #1a5843; */
+  color: rgb(1, 107, 1);
+}
+
+my_font {
+  font-family: Helvetica, Arial, sans-serif;
+  @apply text-gray-900;
+}
