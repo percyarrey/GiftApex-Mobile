@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import {
@@ -16,11 +15,23 @@ import {
   TextInput,
   TouchableRipple,
 } from "react-native-paper";
+
+/*   GOOGLE AUTH */
+
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ email: "", password: "" });
+
+  /*   BACKEND */
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,22 +49,124 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validateForm()) return;
+
     setLoading(true);
+
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      // For demo, accept any email/password
-      await AsyncStorage.setItem("isLoggedIn", "true");
-      await AsyncStorage.setItem("userEmail", email);
-      router.replace("/(tabs)");
-    } catch (error) {
-      Alert.alert("Error", "Login failed. Please try again.");
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          action: "login",
+          rememberMe: true,
+        }),
+      });
+
+      const data = await response.json();
+      console.log("Login response:", data);
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      // ✅ Save user data
+      /* await AsyncStorage.setItem("user", JSON.stringify(data.user)); */
+
+      // (Optional) if you add JWT later
+      /* if (data.token) {
+      await AsyncStorage.setItem("token", data.token);
+    } */
+
+      // Navigate
+      /* router.replace("/(tabs)"); */
+    } catch (error: any) {
+      Alert.alert("Login Error", error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const isFormEmpty = !email || !password;
+
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    if (isGoogleLoading) return;
+
+    try {
+      setIsGoogleLoading(true);
+
+      await GoogleSignin.hasPlayServices();
+
+      const userInfo = await GoogleSignin.signIn();
+
+      if (isSuccessResponse(userInfo)) {
+        const { idToken, user } = userInfo.data;
+        const { email, name, photo } = user;
+
+        console.log("Google user:", { email, name, photo });
+
+        // 🔥 OPTIONAL: Send to your backend
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            name,
+            action: "google-login",
+            idToken,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Google login failed");
+        }
+      }
+    } catch (error: any) {
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.IN_PROGRESS:
+            Alert.alert("Google Sign-In already in progress");
+            break;
+
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            Alert.alert("Google Play Services not available");
+            break;
+
+          case statusCodes.SIGN_IN_CANCELLED:
+            Alert.alert("Sign-in cancelled");
+            break;
+
+          default:
+            console.error("Google Sign-In error code:", error.code);
+            Alert.alert("Error", "Google sign-in failed");
+        }
+      } else {
+        console.error("Google Sign-In error:", error);
+        Alert.alert("Error", "Something went wrong");
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await GoogleSignin.signOut();
+      Alert.alert("Signed out successfully");
+    } catch (error) {
+      console.error("Google Sign-Out error:", error);
+      Alert.alert("Error", "Failed to sign out");
+    }
+    router.replace("/auth/login");
+  };
 
   return (
     <>

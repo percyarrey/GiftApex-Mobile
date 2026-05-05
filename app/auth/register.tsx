@@ -125,6 +125,10 @@ export default function RegisterScreen() {
             justifyContent: "center",
           }}
         >
+          <Image
+            source={require("@/assets/images/auth/GiftApex_logo.png")}
+            style={{ width: 100, height: 100, alignSelf: "center" }}
+          />
           <Text className="mytxt text-2xl" style={{ textAlign: "center" }}>
             Register
           </Text>
