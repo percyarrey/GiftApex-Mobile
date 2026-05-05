@@ -34,23 +34,18 @@ export default function RootLayout() {
   return (
     <PaperProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        {!isLoggedIn ? (
-          <>
-            {/* Show the auth stack by referencing the auth group route */}
-            <Stack>
-              {/* This expects a file at app/auth/_layout.tsx or screens in app/auth/ */}
-              <Stack.Screen name="auth" options={{ headerShown: false }} />
-            </Stack>
-          </>
-        ) : (
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack>
+          <Stack.Protected guard={!isLoggedIn}>
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
+          </Stack.Protected>
+          <Stack.Protected guard={isLoggedIn}>
             <Stack.Screen
               name="modal"
               options={{ presentation: "modal", title: "Modal" }}
             />
-          </Stack>
-        )}
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack.Protected>
+        </Stack>
 
         <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       </ThemeProvider>

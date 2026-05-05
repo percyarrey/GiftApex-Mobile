@@ -32,8 +32,6 @@ export default function LoginScreen() {
     if (!email) newErrors.email = "Email is required";
     else if (!validateEmail(email)) newErrors.email = "Invalid email format";
     if (!password) newErrors.password = "Password is required";
-    else if (password.length < 6)
-      newErrors.password = "Password must be at least 6 characters";
     setErrors(newErrors);
     return !newErrors.email && !newErrors.password;
   };
@@ -54,6 +52,8 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
+  const isFormEmpty = !email || !password;
 
   return (
     <>
@@ -127,6 +127,7 @@ export default function LoginScreen() {
           ) : (
             <>
               <Button
+                disabled={isFormEmpty}
                 mode="contained"
                 buttonColor="rgb(1, 107, 1)"
                 onPress={handleLogin}
