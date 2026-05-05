@@ -40,38 +40,15 @@
       [
         "expo-font",
         {
-          "fonts": [
-            "./assets/fonts/Roboto-VariableFont_wdth,wght.ttf"
-          ],
-          "android": {
-            "fonts": [
-              {
-                "fontFamily": "Roboto",
-                "fontDefinitions": [
-                  {
-                    "path": "./assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf",
-                    "weight": 700,
-                    "style": "italic"
-                  },
-                  {
-                    "path": "./assets/fonts/Roboto-VariableFont_wdth,wght.ttf",
-                    "weight": 700
-                  }
-                ]
-              }
-            ]
-          },
-          "ios": {
-            "fonts": [
-              "./assets/fonts/Inter-Bold.ttf",
-              "./assets/fonts/Inter-BoldItalic.ttf"
-            ]
-          }
+          "fonts": ["./assets/fonts/Roboto-VariableFont_wdth,wght.ttf"]
         }
       ],
-      "@react-native-google-signin/google-signin",{
-        "iosUrlScheme": "com.googleusercontent.apps.955977184779-c0vqs0hh4a65kfin1ufr84dj7h615ddm"
-      }
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.955977184779-c0vqs0hh4a65kfin1ufr84dj7h615ddm"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
