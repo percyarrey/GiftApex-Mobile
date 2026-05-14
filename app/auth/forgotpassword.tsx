@@ -1,7 +1,7 @@
-import { Link, router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Link, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,8 +14,12 @@ import {
   Surface,
   TextInput,
 } from "react-native-paper";
+import Toast from "react-native-toast-message";
 
 export default function ForgotPasswordScreen() {
+  const router = useRouter();
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
+
   // Navigation & UI State
   const [step, setStep] = useState<"email" | "code">("email");
   const [loading, setLoading] = useState(false);
@@ -46,43 +50,115 @@ export default function ForgotPasswordScreen() {
 
   const handleSendCode = async () => {
     const newErrors = { email: "", code: "" };
+
     if (!email) {
       newErrors.email = "Email is required";
       setErrors(newErrors);
       return;
-    } else if (!validateEmail(email)) {
+    }
+
+    if (!validateEmail(email)) {
       newErrors.email = "Invalid email format";
       setErrors(newErrors);
       return;
     }
 
     setLoading(true);
+
     try {
-      // Simulate API call to send code
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          action: "forgot-password",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          res.status === 500 ? "Something went wrong" : data.message,
+        );
+      }
+      await AsyncStorage.setItem(
+        "resetPasswordData",
+        JSON.stringify({ email: data.email, code: "" }),
+      );
+
       setStep("code");
-      setTimer(60); // Start 60-second countdown
-      Alert.alert("Sent", "Verification code sent to your email.");
-    } catch (error) {
-      Alert.alert("Error", "Failed to send code.");
+      setTimer(90);
+
+      Toast.show({
+        type: "success",
+        text1: "Sent",
+        text2: "Verification code sent to your email.",
+      });
+    } catch (error: any) {
+      console.log("❌ Forgot password error:", error.message);
+
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error.message || "Something went wrong. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
-
   const handleVerifyCode = async () => {
     if (!code || code.length !== 6) {
-      setErrors({ ...errors, code: "Please enter a 6-digit code" });
+      setErrors({
+        ...errors,
+        code: "Please enter a 6-digit code",
+      });
       return;
     }
 
     setLoading(true);
+    const Userdata = await AsyncStorage.getItem("resetPasswordData");
     try {
-      // Simulate API verification
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      router.push("/auth/resetpassword");
-    } catch (error) {
-      setErrors({ ...errors, code: "Invalid code. Please try again." });
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: Userdata ? JSON.parse(Userdata).email : "",
+          code,
+          action: "verify-forgot-password-code",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          res.status === 500 ? "Something went wrong" : data.message,
+        );
+      }
+      if (data.success) {
+        await AsyncStorage.setItem(
+          "resetPasswordData",
+          JSON.stringify({ email: data.email, code: data.code }),
+        );
+        router.push("/auth/resetpassword");
+      }
+    } catch (error: any) {
+      console.log("❌ Verify code error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error.message || "Something went wrong",
+      });
+
+      setErrors({
+        ...errors,
+        code: "Invalid code. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -112,7 +188,7 @@ export default function ForgotPasswordScreen() {
           }}
         >
           <Text
-            className="mytxt text-2xl"
+            className="mytxt text-2xl "
             style={{
               textAlign: "center",
               marginBottom: 10,
@@ -126,9 +202,14 @@ export default function ForgotPasswordScreen() {
             className="opacity-70"
             style={{ textAlign: "center", marginBottom: 30 }}
           >
-            {step === "email"
-              ? "Enter your email address to receive a 6-digit verification code."
-              : `Enter the code sent to ${email}`}
+            {step === "email" ? (
+              "Enter your email address to receive a 6-digit verification code."
+            ) : (
+              <>
+                Enter the code sent to{" "}
+                <Text className="font-bold">{email}</Text>
+              </>
+            )}
           </Text>
 
           {/* STEP 1: EMAIL INPUT */}

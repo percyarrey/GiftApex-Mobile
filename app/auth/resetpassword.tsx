@@ -1,7 +1,8 @@
+import { useAuthStore } from "@/store/useAuthStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,9 +15,11 @@ import {
   Surface,
   TextInput,
 } from "react-native-paper";
+import Toast from "react-native-toast-message";
 
 export default function ResetPasswordScreen() {
-  const [code, setCode] = useState("");
+  const { logout } = useAuthStore();
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,21 +51,56 @@ export default function ResetPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!validateForm()) return;
-    setLoading(true);
+    const Userdata = await AsyncStorage.getItem("resetPasswordData");
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      Alert.alert("Success", "Password reset successfully!");
-      router.replace("/auth/login");
-    } catch (error) {
-      Alert.alert("Error", "Failed to reset password. Please try again.");
+      setLoading(true);
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: Userdata ? JSON.parse(Userdata).email : "",
+          password,
+          code: Userdata ? JSON.parse(Userdata).code : "",
+          action: "reset-password",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          res.status === 500 ? "Something went wrong" : data.message,
+        );
+      }
+
+      await logout();
+
+      Toast.show({
+        type: "success",
+        text1: "Success",
+        autoHide: false,
+        swipeable: true,
+        text2: "Password Reset Succesfully. Please login to continue.",
+      });
+
+      setTimeout(() => {
+        router.replace("/auth/login");
+      }, 2000);
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error.message || "Password Reset failed. Try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   // Consistent logic for button state
-  const isFormEmpty = !code || !password || !confirmPassword;
+  const isFormEmpty = !password || !confirmPassword;
 
   return (
     <KeyboardAvoidingView

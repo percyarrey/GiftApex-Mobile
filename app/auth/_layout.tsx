@@ -1,16 +1,17 @@
-// app/auth/_layout.tsx
-import { Slot } from "expo-router";
-import React from "react";
-import { StyleSheet, View } from "react-native";
+import { useAuthStore } from "@/store/useAuthStore";
+import { Redirect, Slot, usePathname } from "expo-router";
 
 export default function AuthLayout() {
-  return (
-    <View style={styles.container}>
-      <Slot />
-    </View>
-  );
-}
+  const { user } = useAuthStore();
+  const pathname = usePathname();
+  // Prevent redirect loop
+  if (user && user.isBlock && pathname !== "/auth/banned-account") {
+    return <Redirect href="/auth/banned-account" />;
+  }
+  // Prevent redirect loop
+  if (user && !user.isVerified && pathname !== "/auth/verify-email") {
+    return <Redirect href="/auth/verify-email" />;
+  }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-});
+  return <Slot screenOptions={{ headerShown: false }} />;
+}

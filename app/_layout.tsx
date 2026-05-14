@@ -1,64 +1,66 @@
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useState } from "react";
-import { Provider as PaperProvider } from "react-native-paper";
+import React, { useEffect } from "react";
+import { MD3LightTheme, Provider as PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
+import Toast from "react-native-toast-message";
 import "./global.css";
-
-export const unstable_settings = { anchor: "(tabs)" };
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const { user, isHydrated, loadUser } = useAuthStore();
+
   useEffect(() => {
     (async () => {
-      try {
-        const isExpoGo = Constants.appOwnership === "expo";
-        console.log("Configuring Google Sign-In...", isExpoGo);
-        GoogleSignin.configure({
-          iosClientId:
-            "955977184779-c0vqs0hh4a65kfin1ufr84dj7h615ddm.apps.googleusercontent.com",
-          webClientId:
-            "955977184779-gk25a82ml02l7v7lnehl40vuptqmppc5.apps.googleusercontent.com",
-          profileImageSize: 150,
-        });
-
-        const loggedIn = await AsyncStorage.getItem("isLoggedIn");
-        setIsLoggedIn(loggedIn === "true");
-      } catch {
-        setIsLoggedIn(false);
-      }
+      loadUser();
     })();
   }, []);
+  if (!isHydrated) return null;
+  // 🔥 CUSTOM PAPER THEME
+  const paperTheme = {
+    ...MD3LightTheme,
+    colors: {
+      ...MD3LightTheme.colors,
 
-  if (isLoggedIn === null) return null;
+      primary: "#016B01",
+      secondary: "#016B01",
 
+      onPrimary: "#ffffff",
+      primaryContainer: "#d4f8d4",
+      onPrimaryContainer: "#014A01",
+
+      outline: "#D0D0D0",
+      background: "#ffffff",
+      surface: "#ffffff",
+
+      error: "#B00020",
+    },
+  };
   return (
-    <PaperProvider>
+    <PaperProvider theme={paperTheme}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Protected guard={!isLoggedIn}>
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack screenOptions={{ headerShown: false }}>
+          {/* NOT VERIFIED || NOT LOGGED IN*/}
+          <Stack.Protected
+            guard={
+              (!!user && !user.isVerified) || !user || (!!user && user.isBlock)
+            }
+          >
+            <Stack.Screen name="auth" />
           </Stack.Protected>
-          <Stack.Protected guard={isLoggedIn}>
-            <Stack.Screen
-              name="modal"
-              options={{ presentation: "modal", title: "Modal" }}
-            />
 
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* VERIFIED */}
+          <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
+            <Stack.Screen name="(tabs)" />
           </Stack.Protected>
         </Stack>
-
+        <Toast />
         <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       </ThemeProvider>
     </PaperProvider>

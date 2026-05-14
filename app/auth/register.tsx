@@ -1,15 +1,12 @@
-import { Link, router } from "expo-router";
-import { useState } from "react";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Linking,
-  Platform,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+  GoogleSignin,
+  isSuccessResponse,
+} from "@react-native-google-signin/google-signin";
+import { Link, useRouter } from "expo-router";
+import { useState } from "react";
+import { Image, Linking, ScrollView, Text, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import {
   ActivityIndicator,
   Button,
@@ -17,8 +14,11 @@ import {
   TextInput,
   TouchableRipple,
 } from "react-native-paper";
+import Toast from "react-native-toast-message";
 
 export default function RegisterScreen() {
+  const router = useRouter();
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -76,33 +76,114 @@ export default function RegisterScreen() {
     try {
       await Linking.openURL("https://www.giftapex.net/privacy-policy");
     } catch (error) {
-      Alert.alert("Error", "Could not open terms and conditions.");
+      Toast.show({
+        type: "Error",
+        text1: "Error",
+        text2: "Could not open terms and conditions.",
+      });
     }
   };
 
+  const loginStore = useAuthStore((state) => state.login);
+  // ================= EMAIL REGISTER =================
   const handleRegister = async () => {
     // Perform validation and update error state
     if (!validateForm()) return;
 
     if (!agreeTerms) {
-      Alert.alert(
-        "Terms required",
-        "Please agree to the terms and conditions.",
-      );
+      Toast.show({
+        type: "info",
+        text1: "Terms required",
+        text2: "Please agree to the terms and conditions.",
+      });
       return;
     }
 
     setLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      Alert.alert(
-        "Success",
-        "Registration successful! Please check your email for verification.",
-      );
-      router.push("/auth/verifyemail");
-    } catch (error) {
-      Alert.alert("Error", "Registration failed. Please try again.");
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          name,
+          password,
+          action: "register",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 500) {
+          throw new Error("Something went wrong");
+        }
+        throw new Error(data.message);
+      }
+
+      // 🔥 THIS IS THE MAGIC LINE
+      await loginStore(data.user);
+
+      router.replace("/(tabs)");
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: err.message || "Something went wrong",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (loading) return;
+
+    try {
+      setLoading(true);
+
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+
+      if (isSuccessResponse(userInfo)) {
+        const { user } = userInfo.data;
+        const { email, name, photo } = user;
+
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            name,
+            photo,
+            action: "google",
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 500) {
+            throw new Error("Something went wrong");
+          }
+          throw new Error(data.message);
+        }
+
+        // 🔥 THIS IS THE MAGIC LINE
+        await loginStore(data.user);
+
+        router.replace("/(tabs)");
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error.message || "Something went wrong",
+      });
     } finally {
       setLoading(false);
     }
@@ -113,11 +194,15 @@ export default function RegisterScreen() {
     !name || !email || !password || !confirmPassword || !agreeTerms;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+    <KeyboardAwareScrollView
+      contentContainerStyle={{ flexGrow: 1 }}
+      enableOnAndroid
+      keyboardShouldPersistTaps="handled"
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Surface
           style={{
             flex: 1,
@@ -270,9 +355,7 @@ export default function RegisterScreen() {
                 </Button>
 
                 <TouchableRipple
-                  onPress={() =>
-                    Alert.alert("Coming Soon", "Google login not implemented.")
-                  }
+                  onPress={handleGoogleLogin}
                   style={{ borderRadius: 6, marginBottom: 20, height: 52 }}
                 >
                   <View
@@ -332,6 +415,6 @@ export default function RegisterScreen() {
           </View>
         </Surface>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
