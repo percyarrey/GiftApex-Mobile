@@ -7,7 +7,7 @@ type User = {
   id: string;
   name: string;
   email: string;
-  photo?: string;
+  image?: string;
   role?: string;
   isVerified: boolean;
   isBlock: boolean;
@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
 
       const storedUser = await AsyncStorage.getItem("user");
-
+      /* await AsyncStorage.removeItem("user"); */ // Clear any temp data
       if (!storedUser) {
         set({ user: null });
         return;

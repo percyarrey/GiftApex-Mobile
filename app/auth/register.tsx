@@ -126,7 +126,7 @@ export default function RegisterScreen() {
       // 🔥 THIS IS THE MAGIC LINE
       await loginStore(data.user);
 
-      router.replace("/(tabs)");
+      router.replace("/(user)");
     } catch (err: any) {
       Toast.show({
         type: "error",
@@ -159,7 +159,7 @@ export default function RegisterScreen() {
           body: JSON.stringify({
             email,
             name,
-            photo,
+            image: photo,
             action: "google",
           }),
         });
@@ -176,7 +176,7 @@ export default function RegisterScreen() {
         // 🔥 THIS IS THE MAGIC LINE
         await loginStore(data.user);
 
-        router.replace("/(tabs)");
+        router.replace("/(user)");
       }
     } catch (error: any) {
       Toast.show({

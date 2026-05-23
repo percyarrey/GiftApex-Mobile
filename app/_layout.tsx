@@ -11,55 +11,73 @@ import React, { useEffect } from "react";
 import { MD3LightTheme, Provider as PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
-import "./global.css";
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { user, isHydrated, loadUser } = useAuthStore();
 
   useEffect(() => {
-    (async () => {
-      loadUser();
-    })();
+    loadUser();
   }, []);
+
   if (!isHydrated) return null;
-  // 🔥 CUSTOM PAPER THEME
+
   const paperTheme = {
     ...MD3LightTheme,
     colors: {
       ...MD3LightTheme.colors,
-
       primary: "#016B01",
-      secondary: "#016B01",
-
-      onPrimary: "#ffffff",
-      primaryContainer: "#d4f8d4",
-      onPrimaryContainer: "#014A01",
-
-      outline: "#D0D0D0",
-      background: "#ffffff",
-      surface: "#ffffff",
-
-      error: "#B00020",
     },
   };
+
+  const extraScreenOptions = {
+    headerShown: true,
+    headerBackTitleVisible: false,
+    headerTintColor: "[#016B01]",
+  };
+
   return (
     <PaperProvider theme={paperTheme}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
-          {/* NOT VERIFIED || NOT LOGGED IN*/}
+          {/* AUTH */}
           <Stack.Protected
-            guard={
-              (!!user && !user.isVerified) || !user || (!!user && user.isBlock)
-            }
+            guard={(!!user && !user.isVerified) || !user || user?.isBlock}
           >
             <Stack.Screen name="auth" />
           </Stack.Protected>
 
-          {/* VERIFIED */}
+          {/* USER */}
           <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
-            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(user)" />
+          </Stack.Protected>
+
+          {/* EXTRA (with clean header titles + back button) */}
+          <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
+            <Stack.Screen
+              name="extra/faq"
+              options={{ ...extraScreenOptions, title: "FAQ" }}
+            />
+            <Stack.Screen
+              name="extra/support"
+              options={{ ...extraScreenOptions, title: "Support" }}
+            />
+            <Stack.Screen
+              name="extra/notifications"
+              options={{ ...extraScreenOptions, title: "Notifications" }}
+            />
+            <Stack.Screen
+              name="extra/settings"
+              options={{ ...extraScreenOptions, title: "Settings" }}
+            />
+          </Stack.Protected>
+
+          {/* ADMIN */}
+          <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
+            <Stack.Screen name="(admin)" />
           </Stack.Protected>
         </Stack>
+
         <Toast />
         <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       </ThemeProvider>

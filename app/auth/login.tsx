@@ -79,7 +79,7 @@ export default function LoginScreen() {
       // 🔥 THIS IS THE MAGIC LINE
       await loginStore(data.user);
 
-      router.replace("/(tabs)");
+      router.replace("/(user)");
     } catch (err: any) {
       Toast.show({
         type: "error",
@@ -107,7 +107,6 @@ export default function LoginScreen() {
       if (isSuccessResponse(userInfo)) {
         const { user } = userInfo.data;
         const { email, name, photo } = user;
-
         const res = await fetch(API_URL, {
           method: "POST",
           headers: {
@@ -116,7 +115,7 @@ export default function LoginScreen() {
           body: JSON.stringify({
             email,
             name,
-            photo,
+            image: photo,
             action: "google",
           }),
         });
@@ -133,7 +132,7 @@ export default function LoginScreen() {
         // 🔥 THIS IS THE MAGIC LINE
         await loginStore(data.user);
 
-        router.replace("/(tabs)");
+        router.replace("/(user)");
       }
     } catch (error: any) {
       Toast.show({
