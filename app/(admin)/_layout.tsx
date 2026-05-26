@@ -12,6 +12,7 @@ import React from "react";
 import {
   Alert,
   Image,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -35,6 +36,7 @@ function HeaderRight() {
 
   return (
     <View style={styles.headerRightContainer}>
+      <StatusBar barStyle="light-content" />
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => router.push("/(admin)/recent-requests")}

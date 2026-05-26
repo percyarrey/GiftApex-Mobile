@@ -11,6 +11,7 @@ import React, { useEffect } from "react";
 import { MD3LightTheme, Provider as PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
+import "./global.css";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -73,7 +74,14 @@ export default function RootLayout() {
           </Stack.Protected>
 
           {/* ADMIN */}
-          <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
+          <Stack.Protected
+            guard={
+              !!user &&
+              user.isVerified &&
+              !user.isBlock &&
+              user.role === "admin"
+            }
+          >
             <Stack.Screen name="(admin)" />
           </Stack.Protected>
         </Stack>

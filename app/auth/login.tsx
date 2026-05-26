@@ -21,7 +21,7 @@ import {
 import Toast from "react-native-toast-message";
 export default function LoginScreen() {
   const router = useRouter();
-  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/auth`;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -171,7 +171,11 @@ export default function LoginScreen() {
             />
             <Text
               className="mytxt text-2xl"
-              style={{ textAlign: "center", marginBottom: 10, marginTop: 20 }}
+              style={{
+                textAlign: "center",
+                marginBottom: 10,
+                marginTop: 20,
+              }}
             >
               Login to your Account
             </Text>

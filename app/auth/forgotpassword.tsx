@@ -18,7 +18,7 @@ import Toast from "react-native-toast-message";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/auth`;
 
   // Navigation & UI State
   const [step, setStep] = useState<"email" | "code">("email");

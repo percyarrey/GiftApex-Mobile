@@ -12,6 +12,7 @@ import React from "react";
 import {
   Alert,
   Image,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -57,6 +58,7 @@ function CustomDrawerContent(props: any) {
 
   return (
     <View style={{ flex: 1 }}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
       <DrawerContentScrollView {...props}>
         {/* USER SECTION */}
         <View style={styles.userContainer}>

@@ -18,7 +18,7 @@ import Toast from "react-native-toast-message";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/auth`;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

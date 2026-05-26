@@ -11,7 +11,7 @@ import {
 import Toast from "react-native-toast-message";
 
 export default function VerifyEmail() {
-  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/auth`;
 
   const { user, logout } = useAuthStore();
 

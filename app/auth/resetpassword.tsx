@@ -19,7 +19,7 @@ import Toast from "react-native-toast-message";
 
 export default function ResetPasswordScreen() {
   const { logout } = useAuthStore();
-  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/auth`;
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/auth`;
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
