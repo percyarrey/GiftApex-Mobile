@@ -72,7 +72,8 @@ export default function HomeScreen() {
     try {
       const response = await fetch(`${API_URL}/api/user/payouts`, {
         headers: {
-          email: user?.email || "",
+          "x-user-email": user?.email || "",
+          "Content-Type": "application/json",
         },
       });
 
@@ -90,7 +91,8 @@ export default function HomeScreen() {
     try {
       const response = await fetch(`${API_URL}/api/user/codes`, {
         headers: {
-          email: user?.email || "",
+          "x-user-email": user?.email || "",
+          "Content-Type": "application/json",
         },
       });
 

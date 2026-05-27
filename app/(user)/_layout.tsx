@@ -194,7 +194,12 @@ export default function UserLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Drawer
-        drawerContent={(props) => <CustomDrawerContent {...props} />}
+        drawerContent={(props) => {
+          // Routes you DON'T want in drawer
+          const Routes = ["index", "sell-code", "codes", "payout"];
+
+          return <CustomDrawerContent {...props} />;
+        }}
         screenOptions={{
           drawerActiveTintColor: "#00C853",
           drawerInactiveTintColor: "#222",
@@ -225,7 +230,15 @@ export default function UserLayout() {
             ),
           }}
         />
-
+        <Drawer.Screen
+          name="sell-code"
+          options={{
+            title: "Sell Code",
+            drawerIcon: ({ color, size }) => (
+              <Ionicons name="cash-outline" size={size} color={color} />
+            ),
+          }}
+        />
         <Drawer.Screen
           name="codes"
           options={{
@@ -241,22 +254,18 @@ export default function UserLayout() {
         />
 
         <Drawer.Screen
-          name="sell-code"
-          options={{
-            title: "Sell Code",
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="cash-outline" size={size} color={color} />
-            ),
-          }}
-        />
-
-        <Drawer.Screen
           name="payout"
           options={{
             title: "Payout",
             drawerIcon: ({ color, size }) => (
               <Ionicons name="wallet-outline" size={size} color={color} />
             ),
+          }}
+        />
+        <Drawer.Screen
+          name="code-details/[id]"
+          options={{
+            drawerItemStyle: { display: "none" }, // Hides from drawer
           }}
         />
       </Drawer>
