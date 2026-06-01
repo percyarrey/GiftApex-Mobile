@@ -31,12 +31,6 @@ export default function RootLayout() {
     },
   };
 
-  const extraScreenOptions = {
-    headerShown: true,
-    headerBackTitleVisible: false,
-    headerTintColor: "[#016B01]",
-  };
-
   return (
     <PaperProvider theme={paperTheme}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -55,22 +49,7 @@ export default function RootLayout() {
 
           {/* EXTRA (with clean header titles + back button) */}
           <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
-            <Stack.Screen
-              name="extra/faq"
-              options={{ ...extraScreenOptions, title: "FAQ" }}
-            />
-            <Stack.Screen
-              name="extra/support"
-              options={{ ...extraScreenOptions, title: "Support" }}
-            />
-            <Stack.Screen
-              name="extra/notifications"
-              options={{ ...extraScreenOptions, title: "Notifications" }}
-            />
-            <Stack.Screen
-              name="extra/settings"
-              options={{ ...extraScreenOptions, title: "Settings" }}
-            />
+            <Stack.Screen name="extra" />
           </Stack.Protected>
 
           {/* ADMIN */}

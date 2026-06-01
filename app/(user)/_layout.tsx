@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Toast from "react-native-toast-message";
 
 /* ================= HEADER RIGHT ================= */
 function HeaderRight() {
@@ -192,84 +193,87 @@ function CustomDrawerContent(props: any) {
 /* ================= MAIN LAYOUT ================= */
 export default function UserLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Drawer
-        drawerContent={(props) => {
-          // Routes you DON'T want in drawer
-          const Routes = ["index", "sell-code", "codes", "payout"];
+    <>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Drawer
+          drawerContent={(props) => {
+            // Routes you DON'T want in drawer
+            const Routes = ["index", "sell-code", "codes", "payout"];
 
-          return <CustomDrawerContent {...props} />;
-        }}
-        screenOptions={{
-          drawerActiveTintColor: "#00C853",
-          drawerInactiveTintColor: "#222",
-          headerTintColor: "green",
-          drawerStyle: {
-            backgroundColor: "#F3F4F6",
-            width: 280,
-          },
-          headerRight: () => <HeaderRight />,
+            return <CustomDrawerContent {...props} />;
+          }}
+          screenOptions={{
+            drawerActiveTintColor: "#00C853",
+            drawerInactiveTintColor: "#222",
+            headerTintColor: "green",
+            drawerStyle: {
+              backgroundColor: "#F3F4F6",
+              width: 280,
+            },
+            headerRight: () => <HeaderRight />,
 
-          headerTitle: () => (
-            <View style={styles.headerTitleContainer}>
-              <Image
-                source={require("@/assets/images/splash-icon.png")}
-                style={styles.logo}
-              />
-              <Text style={styles.headerTitle}>GiftApex</Text>
-            </View>
-          ),
-        }}
-      >
-        <Drawer.Screen
-          name="index"
-          options={{
-            title: "Home",
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" size={size} color={color} />
+            headerTitle: () => (
+              <View style={styles.headerTitleContainer}>
+                <Image
+                  source={require("@/assets/images/splash-icon.png")}
+                  style={styles.logo}
+                />
+                <Text style={styles.headerTitle}>GiftApex</Text>
+              </View>
             ),
           }}
-        />
-        <Drawer.Screen
-          name="sell-code"
-          options={{
-            title: "Sell Code",
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="cash-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="codes"
-          options={{
-            title: "Codes",
-            drawerIcon: ({ color, size }) => (
-              <Ionicons
-                name="document-text-outline"
-                size={size}
-                color={color}
-              />
-            ),
-          }}
-        />
+        >
+          <Drawer.Screen
+            name="index"
+            options={{
+              title: "Home",
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="home-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="sell-code"
+            options={{
+              title: "Sell Code",
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="cash-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="codes"
+            options={{
+              title: "Codes",
+              drawerIcon: ({ color, size }) => (
+                <Ionicons
+                  name="document-text-outline"
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
 
-        <Drawer.Screen
-          name="payout"
-          options={{
-            title: "Payout",
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="wallet-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="code-details/[id]"
-          options={{
-            drawerItemStyle: { display: "none" }, // Hides from drawer
-          }}
-        />
-      </Drawer>
-    </GestureHandlerRootView>
+          <Drawer.Screen
+            name="payout"
+            options={{
+              title: "Payout",
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="wallet-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          {/* <Drawer.Screen
+            name="code-details"
+            options={{
+              drawerItemStyle: { display: "none" }, // Hides from drawer
+            }}
+          /> */}
+        </Drawer>
+      </GestureHandlerRootView>
+      <Toast />
+    </>
   );
 }
 

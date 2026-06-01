@@ -51,6 +51,13 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.955977184779-c0vqs0hh4a65kfin1ufr84dj7h615ddm"
         }
+      ],
+      [
+        "expo-file-system",
+        {
+          "supportsOpeningDocumentsInPlace": true,
+          "enableFileSharing": true
+        }
       ]
     ],
     "experiments": {

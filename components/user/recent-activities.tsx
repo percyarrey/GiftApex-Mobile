@@ -197,11 +197,20 @@ export default function RecentActivities({
       <TouchableOpacity
         activeOpacity={0.9}
         style={styles.card}
-        onPress={() =>
-          router.push({
-            pathname: "/(user)/codes",
-          })
-        }
+        onPress={() => {
+          if (item.type === "giftcode") {
+            router.push({
+              pathname: "/code-details/[id]",
+              params: {
+                id: String(giftCode._id),
+              },
+            });
+          } else {
+            router.push({
+              pathname: "/(user)/codes",
+            });
+          }
+        }}
       >
         {/* TOP */}
         <View style={styles.topRow}>
@@ -219,7 +228,9 @@ export default function RecentActivities({
                 {giftCode.currency} ${giftCode.value}
               </Text>
 
-              <Text style={styles.method}>{giftCode.codes.length} code(s)</Text>
+              <Text style={styles.method}>
+                {giftCode.codes.length} code{giftCode.codes.length > 1 && "'s"}
+              </Text>
             </View>
           </View>
 

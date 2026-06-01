@@ -23,6 +23,7 @@ import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Toast from "react-native-toast-message";
 
+import * as FileSystem from "expo-file-system";
 /* ================= THEME ================= */
 
 const PRIMARY = "rgb(1, 107, 1)";
@@ -178,55 +179,89 @@ export default function SellCodeScreen() {
     useCamera: boolean,
   ) => {
     try {
-      if (useCamera) {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
+      const permission = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-        if (!permission.granted) {
-          Alert.alert("Permission Required", "Please allow camera access");
-
-          return;
-        }
-      } else {
-        const permission =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-        if (!permission.granted) {
-          Alert.alert("Permission Required", "Please allow gallery access");
-
-          return;
-        }
+      if (!permission.granted) {
+        Alert.alert("Permission Required", "Please allow access");
+        return;
       }
 
       const result = useCamera
         ? await ImagePicker.launchCameraAsync({
             mediaTypes: ["images"],
             allowsEditing: false,
-            quality: 0.7,
+            quality: 0.6, // reduced for performance
+            base64: true,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ["images"],
             allowsEditing: false,
-            quality: 0.7,
+            quality: 0.6,
+            base64: true,
           });
 
-      if (!result.canceled) {
-        const uri = result.assets[0].uri;
+      if (result.canceled) return;
 
-        setNewCode((prev) => ({
-          ...prev,
-          image: {
-            ...prev.image,
-            [type]: uri,
-          },
-        }));
+      const asset = result.assets[0];
+
+      let base64Image = asset.base64;
+
+      // fallback if base64 not provided (prevents silent failures)
+      if (!base64Image && asset.uri) {
+        base64Image = await convertToBase64(asset.uri);
       }
+
+      if (!base64Image) {
+        throw new Error("Image conversion failed");
+      }
+      if ((base64Image.length * 3) / 4 > 2_500_000) {
+        Toast.show({
+          type: "error",
+          text1: "Image is too Large. Please re-upload different image.",
+        });
+        throw new Error("Image is too large");
+      }
+      const finalImage = `data:image/jpeg;base64,${base64Image}`;
+      setNewCode((prev) => ({
+        ...prev,
+        image: {
+          ...prev.image,
+          [type]: finalImage,
+        },
+      }));
     } catch (err) {
       console.log(err);
 
+      // 🔴 reset ONLY images so user retries cleanly
+      setNewCode((prev) => ({
+        ...prev,
+        image: {
+          receipt: "",
+          front: "",
+          back: "",
+        },
+      }));
+
       Toast.show({
         type: "error",
-        text1: "Failed to upload image",
+        text1: "Image failed to process. Please re-upload.",
       });
+    }
+  };
+  /* ================= IMAGE CONVERTER================= */
+  const convertToBase64 = async (uri: string) => {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: "base64",
+      });
+
+      if (!base64) throw new Error("Base64 conversion failed");
+
+      return `data:image/jpeg;base64,${base64}`;
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -315,6 +350,14 @@ export default function SellCodeScreen() {
       text1: "Code Deleted",
     });
   };
+  /* IMAGE SANITIZER */
+  const sanitizeImages = (imageObj: ImageData): ImageData => {
+    return {
+      receipt: imageObj.receipt || "",
+      front: imageObj.front || "",
+      back: imageObj.back || "",
+    };
+  };
 
   /* ================= SUBMIT ================= */
 
@@ -343,7 +386,10 @@ export default function SellCodeScreen() {
         body: JSON.stringify({
           email: user?.email,
           giftCard: selectedGiftCard?.name,
-          codes: data.codes,
+          codes: data.codes.map((c) => ({
+            ...c,
+            image: sanitizeImages(c.image),
+          })),
           currency: data.currency,
           note: data.note,
         }),
@@ -366,7 +412,7 @@ export default function SellCodeScreen() {
       });
 
       router.push({
-        pathname: "/(user)/code-details/[id]",
+        pathname: "/code-details/[id]",
         params: {
           id: String(result.id),
         },
