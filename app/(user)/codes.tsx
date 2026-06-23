@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -86,6 +86,15 @@ export default function CodesScreen() {
     setRefreshing(true);
     fetchCodes();
   }, [currentPage]);
+  useFocusEffect(
+    useCallback(() => {
+      const run = async () => {
+        fetchCodes();
+      };
+
+      run();
+    }, []),
+  );
 
   const totalPending = giftCodes.filter((i) => i.status === "pending").length;
   const totalVerified = giftCodes.filter((i) => i.status === "verified").length;

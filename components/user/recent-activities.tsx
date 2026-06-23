@@ -112,7 +112,7 @@ export default function RecentActivities({
       };
     }
 
-    if (s === "rejected") {
+    if (s === "rejected" || s === "cancelled") {
       return {
         background: "#FEF2F2",
       };
@@ -133,7 +133,14 @@ export default function RecentActivities({
         <TouchableOpacity
           activeOpacity={0.9}
           style={styles.card}
-          onPress={() => router.push("/(user)/payout")}
+          onPress={() =>
+            router.push({
+              pathname: "/payout-detail/[id]",
+              params: {
+                id: payout._id,
+              },
+            })
+          }
         >
           {/* TOP */}
           <View style={styles.topRow}>
@@ -282,7 +289,7 @@ export default function RecentActivities({
       <View style={styles.header}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
 
-        <TouchableOpacity onPress={() => router.push("/(user)/payout")}>
+        <TouchableOpacity onPress={() => router.push("/(user)/codes")}>
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
       </View>

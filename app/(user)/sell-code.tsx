@@ -725,7 +725,10 @@ export default function SellCodeScreen() {
                   fontWeight: "600",
                 }}
               >
-                Rate Calculator
+                Rate Calculator{" "}
+                <Text style={{ color: "grey", fontSize: 11 }}>
+                  (showing you amount you will receive in USD)
+                </Text>
               </Text>
 
               <View

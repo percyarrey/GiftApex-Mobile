@@ -5,7 +5,7 @@ export default function ExtraLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
-        headerTintColor: "[#016B01]",
+        headerTintColor: "rgb(1, 107, 1)", // or "#016B01"
       }}
     >
       <Stack.Screen name="notifications" options={{ title: "Notifications" }} />

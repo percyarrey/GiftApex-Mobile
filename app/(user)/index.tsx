@@ -5,8 +5,8 @@ import ExtrasServices from "@/components/user/extra-services";
 import RecentActivities from "@/components/user/recent-activities";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   Image,
   Pressable,
@@ -135,7 +135,16 @@ export default function HomeScreen() {
       setRefreshing(false);
     }
   };
+  useFocusEffect(
+    useCallback(() => {
+      const run = async () => {
+        loadUser();
+        loadActivities();
+      };
 
+      run();
+    }, []),
+  );
   const formatAmount = (amount?: number | null) => {
     if (amount == null) {
       return "--";
