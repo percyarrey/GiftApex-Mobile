@@ -47,7 +47,6 @@ export default function SettingsScreen() {
     name !== original.name ||
     email !== original.email ||
     image !== original.image ||
-    currentPassword.length > 0 ||
     newPassword.length > 0 ||
     confirmPassword.length > 0;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -127,7 +126,7 @@ export default function SettingsScreen() {
     } catch (err) {
       console.log(err);
 
-      setImage("");
+      /* setImage(""); */
 
       Toast.show({
         type: "error",
@@ -193,11 +192,11 @@ export default function SettingsScreen() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
+    } catch (error: any) {
       Toast.show({
         type: "error",
         text1: "Error",
-        text2: err.message || "Something went wrong",
+        text2: error.message || "Something went wrong",
       });
     } finally {
       setLoading(false);

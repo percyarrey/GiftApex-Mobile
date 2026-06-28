@@ -11,6 +11,7 @@ import {
   Image,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -125,6 +126,7 @@ export default function PayoutDetail() {
 
   const [loading, setLoading] = useState(true);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [approveLoading, setapproveLoading] = useState(false);
   const [payout, setPayout] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -146,15 +148,24 @@ export default function PayoutDetail() {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_URL}/api/user/payouts`, {
+      const res = await fetch(`${API_URL}/api/user/payouts/${id}`, {
         headers: {
           "Content-Type": "application/json",
           "x-user-email": user?.email || "",
         },
       });
 
+      if (!res.ok) {
+        Toast.show({
+          type: "error",
+          text1: "Request not found",
+        });
+
+        router.back();
+        return;
+      }
       const data = await res.json();
-      setPayout(data.find((x: any) => x._id === id));
+      setPayout(data);
     } catch (error) {
       console.log("Fetch error:", error);
     } finally {
@@ -212,8 +223,105 @@ export default function PayoutDetail() {
               type: "error",
               text1: "Network error. Try again.",
             });
+            console.error(error);
           } finally {
             setCancelLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+  const rejectWithdrawal = () => {
+    Alert.alert("Reject Withdrawal", "Reject this pending withdrawal?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reject",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setCancelLoading(true);
+
+            const res = await fetch(`${API_URL}/api/admin/payout-requests`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-user-email": user?.email || "",
+              },
+              body: JSON.stringify({
+                id: payout._id,
+                status: "rejected",
+              }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data?.success) {
+              Toast.show({
+                type: "success",
+                text1: "Rejected the request",
+              });
+            } else {
+              Toast.show({
+                type: "error",
+                text1: data?.message || "Failed to Reject withdrawal",
+              });
+            }
+          } catch (error) {
+            Toast.show({
+              type: "error",
+              text1: "Network error. Try again.",
+            });
+            console.error(error);
+          } finally {
+            setCancelLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+  const approveWithdrawal = () => {
+    Alert.alert("Approve Withdrawal", "Confirm this pending withdrawal?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Approve",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setapproveLoading(true);
+
+            const res = await fetch(`${API_URL}/api/admin/payout-requests`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-user-email": user?.email || "",
+              },
+              body: JSON.stringify({
+                id: payout._id,
+                status: "completed",
+              }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data?.success) {
+              Toast.show({
+                type: "success",
+                text1: "Withrawal Approved",
+              });
+            } else {
+              Toast.show({
+                type: "error",
+                text1: data?.message || "Failed to approve withdrawal",
+              });
+            }
+          } catch (error) {
+            Toast.show({
+              type: "error",
+              text1: "Network error. Try again.",
+            });
+            console.error(error);
+          } finally {
+            setapproveLoading(false);
           }
         },
       },
@@ -246,6 +354,9 @@ export default function PayoutDetail() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        <StatusBar
+          barStyle={user?.role === "admin" ? "light-content" : "dark-content"}
+        />
         {/* HEADER */}
         <Text style={styles.headerTitle}>
           Payout <Text style={{ color: PRIMARY }}>Details</Text>
@@ -418,21 +529,52 @@ export default function PayoutDetail() {
             <TimelineStep label="Failed" status="failed" />
           )}
         </View>
-
         {/* CANCEL */}
-        {payout.status === "pending" && (
-          <TouchableOpacity
-            style={styles.cancel}
-            onPress={cancelWithdrawal}
-            disabled={cancelLoading}
-          >
-            {cancelLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.cancelText}>Cancel Withdrawal</Text>
-            )}
-          </TouchableOpacity>
-        )}
+        {payout.status === "pending" &&
+          (user?.role === "admin" ? (
+            <View className=" flex flex-row justify-between py-4">
+              <TouchableOpacity
+                style={styles.cancel}
+                onPress={rejectWithdrawal}
+                disabled={cancelLoading}
+              >
+                {cancelLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.cancelText}>Reject</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: PRIMARY,
+                  padding: 16,
+                  borderRadius: 14,
+                  alignItems: "center",
+                }}
+                onPress={approveWithdrawal}
+                disabled={approveLoading}
+              >
+                {approveLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.cancelText}>Approve Withdrawal</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.cancel}
+              onPress={cancelWithdrawal}
+              disabled={cancelLoading}
+            >
+              {cancelLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.cancelText}>Cancel Withdrawal</Text>
+              )}
+            </TouchableOpacity>
+          ))}
       </ScrollView>
     </>
   );

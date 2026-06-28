@@ -1,53 +1,64 @@
+import { useAuthStore } from "@/store/useAuthStore";
 import { Stack } from "expo-router";
 import { Text, View } from "react-native";
+import Toast from "react-native-toast-message";
 
 const PRIMARY = "rgb(1, 107, 1)";
 
 export default function PayoutDetailLayout() {
+  const { user } = useAuthStore();
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
-        headerShadowVisible: false,
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: true,
+          headerShadowVisible: false,
 
-        headerStyle: {
-          backgroundColor: "#FFFFFF",
-        },
+          headerStyle: {
+            backgroundColor: user?.role === "admin" ? PRIMARY : "#FFFFFF",
+          },
 
-        headerTintColor: PRIMARY,
+          headerTintColor: user?.role === "admin" ? "#FFFFFF" : PRIMARY,
 
-        // ✅ reduces space between back button and title
+          // ✅ reduces space between back button and title
 
-        headerTitle: () => (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            {/* <Ionicons name="document-text-outline" size={22} color={PRIMARY} /> */}
-
-            <Text
+          headerTitle: () => (
+            <View
               style={{
-                fontSize: 21,
-                fontWeight: "600",
-                color: "#111827",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              {/* Code  */}
-              <Text style={{ color: PRIMARY }}>Details</Text>
-            </Text>
-          </View>
-        ),
-      }}
-    >
-      <Stack.Screen
-        name="[id]"
-        options={{
-          headerBackTitle: "Back",
+              {/* <Ionicons name="document-text-outline" size={22} color={PRIMARY} /> */}
+
+              <Text
+                style={{
+                  fontSize: 21,
+                  fontWeight: "600",
+                }}
+              >
+                {/* Code  */}
+                <Text
+                  style={{
+                    color: user?.role === "admin" ? "#FFFFFF" : PRIMARY,
+                  }}
+                >
+                  Details
+                </Text>
+              </Text>
+            </View>
+          ),
         }}
-      />
-    </Stack>
+      >
+        <Stack.Screen
+          name="[id]"
+          options={{
+            headerBackTitle: "Back",
+          }}
+        />
+      </Stack>
+      <Toast />
+    </>
   );
 }

@@ -13,6 +13,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -335,6 +336,9 @@ export default function CodeDetailsScreen() {
           />
         }
       >
+        <StatusBar
+          barStyle={user?.role === "admin" ? "light-content" : "dark-content"}
+        />
         {/* ================= HEADER ================= */}
 
         <View

@@ -6,9 +6,9 @@ import {
   DrawerContentScrollView,
   DrawerItemList,
 } from "@react-navigation/drawer";
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -31,7 +31,7 @@ const PRIMARY_DARK = "rgb(0, 85, 0)";
    HEADER RIGHT
 ========================================================= */
 
-function HeaderRight() {
+function HeaderRight({ recentRequestCount }: { recentRequestCount: number }) {
   const router = useRouter();
 
   return (
@@ -43,9 +43,11 @@ function HeaderRight() {
         style={styles.headerIcon}
       >
         <Ionicons name="time-outline" size={22} color="#FFFFFF" />
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>3</Text>
-        </View>
+        {recentRequestCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{recentRequestCount}</Text>
+          </View>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -169,6 +171,60 @@ function CustomDrawerContent(props: any) {
 ========================================================= */
 
 export default function AdminLayout() {
+  const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
+  const { user } = useAuthStore();
+
+  const [recentRequestCount, setRecentRequestCount] = useState(0);
+  const [payoutRequestCount, setPayoutRequestCount] = useState(0);
+  const segments = useSegments();
+
+  const currentPage = segments[segments.length - 1];
+  const fetchDashboard = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-email": user?.email || "",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch dashboard data");
+      }
+
+      const data = await response.json();
+
+      setRecentRequestCount(data.recentRequest || 0);
+      setPayoutRequestCount(data.payoutRequest || 0);
+    } catch (e) {
+      console.log("Dashboard fetch error:", e);
+    }
+  };
+
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const parent = navigation.getParent();
+
+    if (!parent) return;
+
+    const unsubscribe = parent.addListener("state", () => {
+      fetchDashboard();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const pageTitles: Record<string, string> = {
+    index: "Dashboard",
+    "recent-requests": "Recent Requests",
+    "payout-requests": "Payout Requests",
+    users: "Users List",
+    "price-list": "Price Lists",
+  };
+
+  const currentTitle = pageTitles[currentPage] || "GiftApex Management";
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Drawer
@@ -185,7 +241,9 @@ export default function AdminLayout() {
           drawerActiveTintColor: "#fff",
           drawerInactiveTintColor: "rgba(255,255,255,0.75)",
           drawerActiveBackgroundColor: "rgba(255,255,255,0.16)",
-          headerRight: () => <HeaderRight />,
+          headerRight: () => (
+            <HeaderRight recentRequestCount={recentRequestCount} />
+          ),
           headerTitle: () => (
             <View style={styles.headerTitleContainer}>
               <View style={styles.headerLogo}>
@@ -198,7 +256,7 @@ export default function AdminLayout() {
 
               <View>
                 <Text style={styles.headerTitle}>Admin Panel</Text>
-                <Text style={styles.headerSubtitle}>GiftApex Management</Text>
+                <Text style={styles.headerSubtitle}>{currentTitle}</Text>
               </View>
             </View>
           ),
@@ -229,9 +287,13 @@ export default function AdminLayout() {
                   Recent Requests
                 </Text>
 
-                <View style={badgeStyles.badge}>
-                  <Text style={badgeStyles.badgeText}>3</Text>
-                </View>
+                {recentRequestCount > 0 && (
+                  <View style={badgeStyles.badge}>
+                    <Text style={badgeStyles.badgeText}>
+                      {recentRequestCount}
+                    </Text>
+                  </View>
+                )}
               </View>
             ),
           }}
@@ -251,9 +313,13 @@ export default function AdminLayout() {
                   Payout Requests
                 </Text>
 
-                <View style={badgeStyles.badge}>
-                  <Text style={badgeStyles.badgeText}>5</Text>
-                </View>
+                {payoutRequestCount > 0 && (
+                  <View style={badgeStyles.badge}>
+                    <Text style={badgeStyles.badgeText}>
+                      {payoutRequestCount}
+                    </Text>
+                  </View>
+                )}
               </View>
             ),
           }}
