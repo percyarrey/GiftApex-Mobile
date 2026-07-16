@@ -221,9 +221,9 @@ export default function PayoutDetail() {
           } catch (error) {
             Toast.show({
               type: "error",
-              text1: "Network error. Try again.",
+              text1: "Something went wrong. Refresh and Try again.",
             });
-            console.error(error);
+            console.log(error);
           } finally {
             setCancelLoading(false);
           }
@@ -269,9 +269,9 @@ export default function PayoutDetail() {
           } catch (error) {
             Toast.show({
               type: "error",
-              text1: "Network error. Try again.",
+              text1: "Something went wrong. Refresh and Try again.",
             });
-            console.error(error);
+            console.log(error);
           } finally {
             setCancelLoading(false);
           }
@@ -317,9 +317,9 @@ export default function PayoutDetail() {
           } catch (error) {
             Toast.show({
               type: "error",
-              text1: "Network error. Try again.",
+              text1: "Something went wrong.Refresh and Try again.",
             });
-            console.error(error);
+            console.log(error);
           } finally {
             setapproveLoading(false);
           }

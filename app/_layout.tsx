@@ -8,20 +8,66 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
-import { MD3LightTheme, Provider as PaperProvider } from "react-native-paper";
+import {
+  ActivityIndicator,
+  MD3LightTheme,
+  Provider as PaperProvider,
+} from "react-native-paper";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import "./global.css";
+
+import * as Notifications from "expo-notifications";
+import { router } from "expo-router";
+import { Text, View } from "react-native";
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { user, isHydrated, loadUser } = useAuthStore();
 
   useEffect(() => {
-    loadUser();
-  }, []);
+    const initialize = async () => {
+      await loadUser();
+    };
 
-  if (!isHydrated) return null;
+    initialize();
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data;
+
+        if (data.referenceModel === "Payout") {
+          router.push({
+            pathname: "/payout-detail/[id]",
+            params: {
+              id: String(data.referenceId),
+            },
+          });
+        }
+
+        if (data.referenceModel === "GiftCode") {
+          router.push({
+            pathname: "/code-details/[id]",
+            params: {
+              id: String(data.referenceId),
+            },
+          });
+        }
+      },
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const paperTheme = {
     ...MD3LightTheme,
@@ -30,7 +76,37 @@ export default function RootLayout() {
       primary: "#016B01",
     },
   };
+  if (!isHydrated) {
+    return (
+      <PaperProvider theme={paperTheme}>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#fff",
+            }}
+          >
+            <ActivityIndicator size="large" color="#016B01" />
 
+            <Text
+              style={{
+                marginTop: 16,
+                fontSize: 16,
+                color: "#555",
+                fontWeight: "500",
+              }}
+            >
+              Loading...
+            </Text>
+          </View>
+        </ThemeProvider>
+      </PaperProvider>
+    );
+  }
   return (
     <PaperProvider theme={paperTheme}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>

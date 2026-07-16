@@ -290,7 +290,7 @@ export default function CodeDetailsScreen() {
 
       Toast.show({
         type: "error",
-        text1: "Failed to save changes",
+        text1: "Failed to save Changes/User must have withdrawn",
       });
     } finally {
       setSaveLoading(false);

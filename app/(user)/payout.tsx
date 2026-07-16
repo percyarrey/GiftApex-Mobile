@@ -359,7 +359,9 @@ export default function PayoutScreen() {
                     { backgroundColor: getStatusColor(p.status) },
                   ]}
                 >
-                  <Text style={styles.statusText}>{p.status}</Text>
+                  <Text style={styles.statusText} className=" capitalize">
+                    {p.status}
+                  </Text>
                 </View>
               </View>
 
@@ -983,12 +985,16 @@ const styles = StyleSheet.create({
   amount: { fontSize: 18, fontWeight: "800" },
 
   statusBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 20,
   },
 
-  statusText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  statusText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   row: { flexDirection: "row", alignItems: "center", marginTop: 4 },
 

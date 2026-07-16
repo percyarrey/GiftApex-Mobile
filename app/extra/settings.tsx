@@ -178,7 +178,7 @@ export default function SettingsScreen() {
       }
       await login(data.user);
       if (emailChanged) {
-        await logout();
+        await logout(null);
         router.push("/auth/login");
       }
 

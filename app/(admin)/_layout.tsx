@@ -152,7 +152,7 @@ function CustomDrawerContent(props: any) {
               text: "Logout",
               style: "destructive",
               onPress: async () => {
-                await logout();
+                await logout(user);
                 router.push("/auth/login");
               },
             },

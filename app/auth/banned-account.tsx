@@ -158,7 +158,7 @@ export default function BannedAccountScreen() {
         <Text
           style={{ color: "rgb(1, 107, 1)", fontWeight: "bold" }}
           onPress={async () => {
-            await logout();
+            await logout(null);
             router.push("/auth/login");
           }}
         >

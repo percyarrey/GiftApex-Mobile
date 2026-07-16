@@ -75,7 +75,7 @@ export default function ResetPasswordScreen() {
         );
       }
 
-      await logout();
+      await logout(null);
 
       Toast.show({
         type: "success",

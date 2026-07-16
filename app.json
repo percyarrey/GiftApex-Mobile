@@ -9,26 +9,42 @@
     "scheme": "giftapex",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.percy.giftapex"
     },
+
     "android": {
+      "package": "com.percy.giftapex",
+
+      "googleServicesFile": "./google-services.json",
+
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/splash-icon.png",
         "backgroundColor": "#ffffff"
       },
 
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.percy.giftapex"
+      "predictiveBackGestureEnabled": false
     },
+
     "web": {
       "output": "static",
       "favicon": "./assets/images/splash-icon.png"
     },
+
     "plugins": [
       "expo-router",
+
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/splash-icon.png",
+          "color": "#016B01"
+        }
+      ],
+
       [
         "expo-splash-screen",
         {
@@ -40,18 +56,21 @@
           }
         }
       ],
+
       [
         "expo-font",
         {
           "fonts": ["./assets/fonts/Roboto-VariableFont_wdth,wght.ttf"]
         }
       ],
+
       [
         "@react-native-google-signin/google-signin",
         {
           "iosUrlScheme": "com.googleusercontent.apps.955977184779-c0vqs0hh4a65kfin1ufr84dj7h615ddm"
         }
       ],
+
       [
         "expo-file-system",
         {
@@ -60,10 +79,12 @@
         }
       ]
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
+
     "extra": {
       "router": {},
       "eas": {

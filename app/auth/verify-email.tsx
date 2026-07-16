@@ -85,7 +85,7 @@ export default function VerifyEmail() {
         );
       }
 
-      await logout();
+      await logout(user);
 
       Toast.show({
         type: "success",

@@ -24,7 +24,7 @@ import Toast from "react-native-toast-message";
 /* ================= HEADER RIGHT ================= */
 function HeaderRight() {
   const router = useRouter();
-
+  const { user } = useAuthStore();
   return (
     <View style={styles.headerRightContainer}>
       <TouchableOpacity
@@ -42,9 +42,14 @@ function HeaderRight() {
         style={styles.iconWrapper}
       >
         <Ionicons name="notifications-outline" size={24} color="black" />
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>5</Text>
-        </View>
+
+        {(user?.unreadNotifications ?? 0) > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {user?.unreadNotifications.toString()}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -174,7 +179,7 @@ function CustomDrawerContent(props: any) {
                 text: "Logout",
                 style: "destructive",
                 onPress: async () => {
-                  await logout();
+                  await logout(user);
                   router.push("/auth/login");
                 },
               },
