@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { Stack } from "expo-router";
-import { Text, View } from "react-native";
+import { StatusBar, Text, View } from "react-native";
 import Toast from "react-native-toast-message";
 
 const PRIMARY = "rgb(1, 107, 1)";
@@ -11,16 +11,21 @@ export default function CodeDetailsLayout() {
     <>
       <Stack
         screenOptions={{
-          headerShown: true,
+          /* headerShown: true,
           headerShadowVisible: false,
 
           headerStyle: {
             backgroundColor: user?.role === "admin" ? PRIMARY : "#FFFFFF",
           },
 
-          headerTintColor: user?.role === "admin" ? "#FFFFFF" : PRIMARY,
-
-          // ✅ reduces space between back button and title
+          headerTintColor: user?.role === "admin" ? "#FFFFFF" : PRIMARY, */
+          headerStyle: {
+            backgroundColor: "rgb(1, 107, 1)",
+          },
+          headerTintColor: "#fff",
+          headerTitleStyle: {
+            fontWeight: "700",
+          },
 
           headerTitle: () => (
             <View
@@ -41,7 +46,8 @@ export default function CodeDetailsLayout() {
                 {/* Code  */}
                 <Text
                   style={{
-                    color: user?.role === "admin" ? "#FFFFFF" : PRIMARY,
+                    /* color: user?.role === "admin" ? "#FFFFFF" : PRIMARY, */
+                    color: "#FFFFFF",
                   }}
                 >
                   Details
@@ -51,6 +57,7 @@ export default function CodeDetailsLayout() {
           ),
         }}
       >
+        <StatusBar barStyle="light-content" />
         <Stack.Screen
           name="[id]"
           options={{

@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 /* ================= HEADER RIGHT ================= */
@@ -28,7 +29,7 @@ function HeaderRight() {
   return (
     <View style={styles.headerRightContainer}>
       <TouchableOpacity
-        onPress={() => router.push("/extra/support")}
+        onPress={() => router.push("/(support)/messages")}
         style={styles.iconWrapper}
       >
         <Ionicons name="headset-outline" size={24} color="black" />
@@ -59,11 +60,18 @@ function HeaderRight() {
 function CustomDrawerContent(props: any) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const firstLetter = (user?.name || "U").charAt(0).toUpperCase();
 
   return (
-    <View style={{ flex: 1 }}>
+    <View
+      style={{
+        flex: 1,
+        paddingTop: insets.top || 16,
+        paddingBottom: insets.bottom || 16,
+      }}
+    >
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
       <DrawerContentScrollView {...props}>
         {/* USER SECTION */}
@@ -140,7 +148,7 @@ function CustomDrawerContent(props: any) {
 
         <TouchableOpacity
           style={styles.extraItem}
-          onPress={() => router.push("/extra/support")}
+          onPress={() => router.push("/(support)/messages")}
         >
           <Ionicons name="chatbox-outline" size={20} color="#333" />
           <Text style={styles.extraText}>Support</Text>
@@ -388,6 +396,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 20,
+    paddingBottom: 18,
     borderTopWidth: 1,
     borderTopColor: "#ddd",
     gap: 10,

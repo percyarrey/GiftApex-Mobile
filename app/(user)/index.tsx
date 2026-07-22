@@ -5,7 +5,7 @@ import ExtrasServices from "@/components/user/extra-services";
 import RecentActivities from "@/components/user/recent-activities";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, usePathname, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   Image,
@@ -46,6 +46,13 @@ const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
 export default function HomeScreen() {
   const router = useRouter();
+  const hideFabRoutes = ["/extra", "/messages", "/chat"];
+
+  const pathname = usePathname();
+
+  const shouldShowFab = !hideFabRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
 
   const [open, setOpen] = useState(false);
   const [showBalance, setShowBalance] = useState(false);
@@ -283,42 +290,44 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* ================= FAB ================= */}
-      <Portal>
-        <FAB.Group
-          open={open}
-          visible
-          icon={open ? "close" : "apps"}
-          backdropColor="rgba(0,0,0,0.3)"
-          fabStyle={styles.mainFab}
-          color="white"
-          actions={[
-            {
-              icon: "cash",
-              label: "Sell Code",
-              onPress: () => router.push("/(user)/sell-code"),
-              style: styles.actionFab,
-              labelStyle: styles.fabLabel,
-            },
+      {shouldShowFab && (
+        <Portal>
+          <FAB.Group
+            open={open}
+            visible
+            icon={open ? "close" : "apps"}
+            backdropColor="rgba(0,0,0,0.3)"
+            fabStyle={styles.mainFab}
+            color="white"
+            actions={[
+              {
+                icon: "cash",
+                label: "Sell Code",
+                onPress: () => router.push("/(user)/sell-code"),
+                style: styles.actionFab,
+                labelStyle: styles.fabLabel,
+              },
 
-            {
-              icon: "file-document",
-              label: "Codes",
-              onPress: () => router.push("/(user)/codes"),
-              style: styles.actionFab,
-              labelStyle: styles.fabLabel,
-            },
+              {
+                icon: "file-document",
+                label: "Codes",
+                onPress: () => router.push("/(user)/codes"),
+                style: styles.actionFab,
+                labelStyle: styles.fabLabel,
+              },
 
-            {
-              icon: "wallet",
-              label: "Payout",
-              onPress: () => router.push("/(user)/payout"),
-              style: styles.actionFab,
-              labelStyle: styles.fabLabel,
-            },
-          ]}
-          onStateChange={({ open }) => setOpen(open)}
-        />
-      </Portal>
+              {
+                icon: "wallet",
+                label: "Payout",
+                onPress: () => router.push("/(user)/payout"),
+                style: styles.actionFab,
+                labelStyle: styles.fabLabel,
+              },
+            ]}
+            onStateChange={({ open }) => setOpen(open)}
+          />
+        </Portal>
+      )}
     </SafeAreaView>
   );
 }

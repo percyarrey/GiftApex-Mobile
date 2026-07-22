@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { StatusBar } from "react-native";
 
 type ChatParams = {
   id: string;
@@ -8,34 +9,42 @@ type ChatParams = {
 
 export default function SupportLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: "rgb(1, 107, 1)",
-        },
-        headerTintColor: "#fff",
-        headerTitleStyle: {
-          fontWeight: "700",
-        },
-      }}
-    >
-      <Stack.Screen
-        name="messages"
-        options={{
-          title: "Support Messages",
+    <>
+      <StatusBar barStyle="light-content" />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: "rgb(1, 107, 1)",
+          },
+          headerTintColor: "#fff",
+          headerTitleStyle: {
+            fontWeight: "700",
+          },
         }}
-      />
 
-      <Stack.Screen
-        name="chat/[id]"
-        options={({ route }) => {
-          const params = route.params as ChatParams;
+        /* screenOptions={{
+        headerShown: true,
+        headerTintColor: "rgb(1, 107, 1)", // or "#016B01"
+      }} */
+      >
+        <Stack.Screen
+          name="messages"
+          options={{
+            title: "Support Messages",
+          }}
+        />
 
-          return {
-            title: params?.name ?? "Chat",
-          };
-        }}
-      />
-    </Stack>
+        <Stack.Screen
+          name="chat/[id]"
+          options={({ route }) => {
+            const params = route.params as ChatParams;
+
+            return {
+              title: params?.name ?? "Chat",
+            };
+          }}
+        />
+      </Stack>
+    </>
   );
 }

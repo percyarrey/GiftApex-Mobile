@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { Stack } from "expo-router";
-import { Text, View } from "react-native";
+import { StatusBar, Text, View } from "react-native";
 import Toast from "react-native-toast-message";
 
 const PRIMARY = "rgb(1, 107, 1)";
@@ -9,16 +9,24 @@ export default function PayoutDetailLayout() {
   const { user } = useAuthStore();
   return (
     <>
+      <StatusBar barStyle="light-content" />
       <Stack
         screenOptions={{
-          headerShown: true,
+          /* headerShown: true,
           headerShadowVisible: false,
 
           headerStyle: {
             backgroundColor: user?.role === "admin" ? PRIMARY : "#FFFFFF",
           },
 
-          headerTintColor: user?.role === "admin" ? "#FFFFFF" : PRIMARY,
+          headerTintColor: user?.role === "admin" ? "#FFFFFF" : PRIMARY, */
+          headerStyle: {
+            backgroundColor: "rgb(1, 107, 1)",
+          },
+          headerTintColor: "#fff",
+          headerTitleStyle: {
+            fontWeight: "700",
+          },
 
           // ✅ reduces space between back button and title
 
@@ -41,7 +49,8 @@ export default function PayoutDetailLayout() {
                 {/* Code  */}
                 <Text
                   style={{
-                    color: user?.role === "admin" ? "#FFFFFF" : PRIMARY,
+                    /* color: user?.role === "admin" ? "#FFFFFF" : PRIMARY, */
+                    color: "#FFFFFF",
                   }}
                 >
                   Details

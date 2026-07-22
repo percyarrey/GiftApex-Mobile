@@ -1,0 +1,231 @@
+100:       setTicket(td.ticket || td.data || td);
+101:       if (messageRes.ok)
+102:         setMessages(md.messages || md.data?.messages || md.data || []);
+103:     } catch (e: any) {
+104:       Toast.show({
+105:         type: "error",
+106:         text1: "Could not load conversation",
+107:         text2: e.message,
+108:       });
+109:     } finally {
+110:       setLoading(false);
+111:     }
+112:   }, [id, user?.email]);
+113:   useFocusEffect(
+114:     useCallback(() => {
+115:       load();
+116:     }, [load]),
+117:   );
+118:   const send = async () => {
+119:     if (!text.trim() || sending) return;
+120:     const value = text.trim();
+121:     setText("");
+122:     try {
+123:       setSending(true);
+124:       const res = await fetch(
+125:         `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}/messages`,
+126:         {
+127:           method: "POST",
+128:           headers,
+129:           body: JSON.stringify({ message: value, type: "text" }),
+130:         },
+131:       );
+132:       const data = await res.json();
+133:       if (!res.ok || data.success === false)
+134:         throw new Error(data.message || "Message was not sent");
+135:       setMessages((p) => [...p, data.message || data.data || data]);
+136:       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
+137:     } catch (e: any) {
+138:       setText(value);
+139:       Toast.show({
+140:         type: "error",
+141:         text1: "Message not sent",
+142:         text2: e.message,
+143:       });
+144:     } finally {
+145:       setSending(false);
+146:     }
+147:   };
+148:   const updateTicket = async (action: string, priority?: string) => {
+149:     try {
+150:       const res = await fetch(
+151:         `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}`,
+152:         {
+153:           method: "PATCH",
+154:           headers,
+155:           body: JSON.stringify(priority ? { priority } : { action }),
+156:         },
+157:       );
+158:       const data = await res.json();
+159:       if (!res.ok || data.success === false)
+160:         throw new Error(data.message || "Update failed");
+161:       setTicket(data.ticket || data.data || data);
+162:       await load();
+163:     } catch (e: any) {
+164:       Toast.show({
+165:         type: "error",
+166:         text1: "Could not update ticket",
+167:         text2: e.message,
+168:       });
+169:     }
+170:   };
+171:   const isAdmin = user?.role === "admin";
+172:   const closed = ticket?.status === "Closed";
+173:   const resolved = ticket?.status === "Resolved";
+174:   const canReply = !closed && (!isAdmin || ticket?.status === "Open");
+175:   const profileUser = isAdmin ? ticket?.userId : ticket?.assignedAdmin;
+176:   const profileName =
+177:     profileUser?.name ||
+178:     (isAdmin ? ticket?.assignedAdmin?.name : ticket?.userId?.name) ||
+179:     "Unknown";
+180:   const profileAvatar = profileUser?.avatar;
+181:   const ticketTitle = ticket?.subject || subject || "Support ticket";
+182:   const ticketMeta = `${ticket?.category || "Support"} · ${ticket?.status || "Waiting"}${ticket?.priority ? ` · ${ticket.priority}` : ""}`;
+183: 
+184:   useLayoutEffect(() => {
+185:     navigation.setOptions({
+186:       headerTitle: () => (
+187:         <View style={styles.headerTitleContainer}>
+188:           <Text style={styles.headerTitle} numberOfLines={1}>
+189:             {ticketTitle}
+190:           </Text>
+191:           <Text style={styles.headerSubtitle} numberOfLines={1}>
+192:             {ticketMeta}
+193:           </Text>
+194:         </View>
+195:       ),
+196:     });
+197:   }, [navigation, ticketTitle, ticketMeta]);
+198:   if (loading)
+199:     return (
+200:       <View style={styles.center}>
+201:         <ActivityIndicator size="large" color={PRIMARY} />
+202:       </View>
+203:     );
+204:   return (
+205:     <KeyboardAvoidingView
+206:       style={styles.container}
+207:       behavior="padding"
+208:       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 60}
+209:     >
+210:       <View style={styles.info}>
+211:         <View style={{ flex: 1 }}>
+212:           <View style={styles.infoRow}>
+213:             {profileName ? (
+214:               <View style={styles.adminInfo}>
+215:                 <View style={styles.avatar}>
+216:                   {profileAvatar ? (
+217:                     <Image
+218:                       source={{ uri: profileAvatar }}
+219:                       style={styles.avatarImage}
+220:                     />
+221:                   ) : (
+222:                     <Text style={styles.avatarText}>
+223:                       {getInitials(profileName)}
+224:                     </Text>
+225:                   )}
+226:                 </View>
+227:                 <Text style={styles.adminName} numberOfLines={1}>
+228:                   {profileName}
+229:                 </Text>
+230:               </View>
+231:             ) : null}
+232:             <TouchableOpacity
+233:               onPress={() => setMenuVisible((prev) => !prev)}
+234:               hitSlop={8}
+235:               android_ripple={{
+236:                 color: "rgba(0,0,0,0.08)",
+237:                 borderless: true,
+238:               }}
+239:               style={styles.headerButton}
+240:             >
+241:               <MaterialCommunityIcons
+242:                 name="dots-vertical"
+243:                 size={24}
+244:                 color={PRIMARY}
+245:               />
+246:             </TouchableOpacity>
+247:           </View>
+248:           {ticket?.transactionId ? (
+249:             <Text style={styles.transaction} numberOfLines={1}>
+250:               Transaction ID: {ticket.transactionId}
+251:             </Text>
+252:           ) : null}
+253:         </View>
+254:       </View>
+255:       <View style={styles.body}>
+256:         <FlatList
+257:           ref={listRef}
+258:           style={styles.list}
+259:           data={messages}
+260:           keyExtractor={(item, index) => item._id || String(index)}
+261:           contentContainerStyle={styles.messages}
+262:           keyboardShouldPersistTaps="handled"
+263:           onContentSizeChange={() =>
+264:             listRef.current?.scrollToEnd({ animated: false })
+265:           }
+266:           renderItem={({ item }) => {
+267:             const mine = isAdmin
+268:               ? item.senderRole === "admin"
+269:               : item.senderRole === "user";
+270:             if (item.type === "system" || item.senderRole === "system")
+271:               return <Text style={styles.system}>{item.message}</Text>;
+272:             return (
+273:               <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+274:                 {item.image ? (
+275:                   <Pressable onPress={() => setPreviewImage(item.image || "")}>
+276:                     <Image
+277:                       source={{ uri: item.image }}
+278:                       style={styles.messageImage}
+279:                     />
+280:                   </Pressable>
+281:                 ) : null}
+282:                 {item.message ? (
+283:                   <Text style={[styles.messageText, mine && styles.mineText]}>
+284:                     {item.message}
+285:                   </Text>
+286:                 ) : null}
+287:                 <Text style={[styles.time, mine && styles.mineTime]}>
+288:                   {item.createdAt
+289:                     ? new Date(item.createdAt).toLocaleTimeString([], {
+290:                         hour: "numeric",
+291:                         minute: "2-digit",
+292:                       })
+293:                     : ""}
+294:                 </Text>
+295:               </View>
+296:             );
+297:           }}
+298:           ListEmptyComponent={
+299:             <View style={styles.empty}>
+300:               <MaterialCommunityIcons
+301:                 name="message-outline"
+302:                 size={45}
+303:                 color="#A3ACA3"
+304:               />
+305:               <Text style={styles.emptyText}>No messages yet</Text>
+306:             </View>
+307:           }
+308:           ListFooterComponent={<View style={styles.footerSpacer} />}
+309:         />
+310:       </View>
+311:       {canReply ? (
+312:         <View style={styles.inputRow}>
+313:           <TextInput
+314:             value={text}
+315:             onChangeText={setText}
+316:             placeholder="Write a message"
+317:             multiline
+318:             style={styles.input}
+319:           />
+320:           <TouchableOpacity
+321:             disabled={!text.trim() || sending}
+322:             onPress={send}
+323:             style={[styles.send, !text.trim() && styles.disabled]}
+324:           >
+325:             {sending ? (
+326:               <ActivityIndicator color="#fff" size="small" />
+327:             ) : (
+328:               <Ionicons name="send" size={19} color="#fff" />
+329:             )}
+330:           </TouchableOpacity>

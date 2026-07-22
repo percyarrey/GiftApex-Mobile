@@ -11,7 +11,6 @@ import {
   Image,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -354,9 +353,6 @@ export default function PayoutDetail() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <StatusBar
-          barStyle={user?.role === "admin" ? "light-content" : "dark-content"}
-        />
         {/* HEADER */}
         <Text style={styles.headerTitle}>
           Payout <Text style={{ color: PRIMARY }}>Details</Text>

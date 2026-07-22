@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   ActivityIndicator,
@@ -126,6 +127,8 @@ function timeAgo(date: string) {
 export default function NotificationsScreen() {
   const user = useAuthStore((state) => state.user);
 
+  const insets = useSafeAreaInsets();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -137,7 +140,10 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [hasMore, setHasMore] = useState(true);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const router = useRouter();
+
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
 
   const fetchNotifications = async (refresh = false) => {
     try {
@@ -200,6 +206,40 @@ export default function NotificationsScreen() {
     setRefreshing(false);
   }, []);
 
+  const markAllRead = async () => {
+    if (markingAllRead || unreadCount === 0) return;
+
+    try {
+      setMarkingAllRead(true);
+
+      const response = await fetch(API_URL, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-email": user?.email || "",
+        },
+        body: JSON.stringify({
+          markAllRead: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setNotifications((prev) =>
+          prev.map((notification) => ({
+            ...notification,
+            isRead: true,
+          })),
+        );
+      }
+    } catch (error) {
+      console.log("Mark all read error", error);
+    } finally {
+      setMarkingAllRead(false);
+    }
+  };
+
   const filteredNotifications =
     filter === "unread"
       ? notifications.filter((item) => !item.isRead)
@@ -246,6 +286,20 @@ export default function NotificationsScreen() {
               id: String(item.referenceId),
             },
           });
+          break;
+
+        case "Support":
+        case "SupportTicket":
+        case "Ticket":
+        case "SupportChat":
+          if (item.referenceId) {
+            router.push({
+              pathname: "/(support)/chat/[id]",
+              params: {
+                id: String(item.referenceId),
+              },
+            });
+          }
           break;
 
         default:
@@ -414,6 +468,62 @@ export default function NotificationsScreen() {
           paddingTop: 0,
         }}
       >
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+        >
+          <View>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: "800",
+                color: "#111",
+              }}
+            >
+              Notifications
+            </Text>
+            <Text
+              style={{
+                marginTop: 4,
+                color: "#667072",
+                fontSize: 14,
+              }}
+            >
+              {unreadCount} unread notification{unreadCount === 1 ? "" : "s"}
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={markAllRead}
+            disabled={markingAllRead || unreadCount === 0}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor:
+                markingAllRead || unreadCount === 0 ? "#9CA3AF" : PRIMARY,
+              opacity: pressed ? 0.8 : 1,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 14,
+            })}
+          >
+            <Ionicons name="checkmark-done-outline" size={18} color="#fff" />
+            <Text
+              style={{
+                marginLeft: 8,
+                color: "#fff",
+                fontWeight: "700",
+              }}
+            >
+              Mark all read
+            </Text>
+          </Pressable>
+        </View>
+
         <View>
           <Text className=" text-gray-400 ">Filter by</Text>
         </View>
@@ -471,6 +581,11 @@ export default function NotificationsScreen() {
           }
         }}
         onEndReachedThreshold={0.5}
+        contentContainerStyle={
+          filteredNotifications.length
+            ? { paddingBottom: insets.bottom + 20 }
+            : { flex: 1 }
+        }
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator size="large" color={PRIMARY} />

@@ -2,7 +2,7 @@
 
 import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, usePathname, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Pressable,
@@ -21,6 +21,13 @@ const PRIMARY = "rgb(1, 107, 1)";
 export default function AdminDashboard() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const router = useRouter();
+  const hideFabRoutes = ["/extra", "/messages", "/chat"];
+
+  const pathname = usePathname();
+
+  const shouldShowFab = !hideFabRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
   const { user } = useAuthStore();
 
   const [recentRequestCount, setRecentRequestCount] = useState(0);
@@ -261,54 +268,56 @@ export default function AdminDashboard() {
       </ScrollView>
 
       {/* ================= FAB ================= */}
-      <Portal>
-        <FAB.Group
-          open={fabOpen}
-          visible
-          icon={fabOpen ? "close" : "shield-account"}
-          backdropColor="rgba(0,0,0,0.35)"
-          fabStyle={styles.mainFab}
-          color="white"
-          actions={[
-            {
-              icon: "history",
-              label: "Recent Requests",
-              color: "white",
-              onPress: () => router.push("/(admin)/recent-requests"),
-              style: styles.actionFab,
-              labelStyle: styles.fabLabel,
-            },
+      {shouldShowFab && (
+        <Portal>
+          <FAB.Group
+            open={fabOpen}
+            visible
+            icon={fabOpen ? "close" : "shield-account"}
+            backdropColor="rgba(0,0,0,0.35)"
+            fabStyle={styles.mainFab}
+            color="white"
+            actions={[
+              {
+                icon: "history",
+                label: "Recent Requests",
+                color: "white",
+                onPress: () => router.push("/(admin)/recent-requests"),
+                style: styles.actionFab,
+                labelStyle: styles.fabLabel,
+              },
 
-            {
-              icon: "wallet",
-              label: "Payout Requests",
-              onPress: () => router.push("/(admin)/payout-requests"),
-              style: styles.actionFab,
-              labelStyle: styles.fabLabel,
-              color: "white",
-            },
+              {
+                icon: "wallet",
+                label: "Payout Requests",
+                onPress: () => router.push("/(admin)/payout-requests"),
+                style: styles.actionFab,
+                labelStyle: styles.fabLabel,
+                color: "white",
+              },
 
-            {
-              icon: "cash-multiple",
-              label: "Price List",
-              onPress: () => router.push("/(admin)/price-list"),
-              style: styles.actionFab,
-              labelStyle: styles.fabLabel,
-              color: "white",
-            },
+              {
+                icon: "cash-multiple",
+                label: "Price List",
+                onPress: () => router.push("/(admin)/price-list"),
+                style: styles.actionFab,
+                labelStyle: styles.fabLabel,
+                color: "white",
+              },
 
-            {
-              icon: "account-group",
-              label: "Users",
-              onPress: () => router.push("/(admin)/users"),
-              style: styles.actionFab,
-              labelStyle: styles.fabLabel,
-              color: "white",
-            },
-          ]}
-          onStateChange={({ open }) => setFabOpen(open)}
-        />
-      </Portal>
+              {
+                icon: "account-group",
+                label: "Users",
+                onPress: () => router.push("/(admin)/users"),
+                style: styles.actionFab,
+                labelStyle: styles.fabLabel,
+                color: "white",
+              },
+            ]}
+            onStateChange={({ open }) => setFabOpen(open)}
+          />
+        </Portal>
+      )}
     </SafeAreaView>
   );
 }

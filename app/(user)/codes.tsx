@@ -123,7 +123,7 @@ export default function CodesScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       <View style={{ paddingHorizontal: 15 }}>
         {/* HEADER */}

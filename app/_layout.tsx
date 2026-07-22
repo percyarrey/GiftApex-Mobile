@@ -6,7 +6,6 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import {
   ActivityIndicator,
@@ -14,19 +13,39 @@ import {
   Provider as PaperProvider,
 } from "react-native-paper";
 import "react-native-reanimated";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import "./global.css";
 
+import { getActiveSupportChatId } from "@/utils/activeSupportChat";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { Text, View } from "react-native";
+
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data || {};
+    const activeTicketId = getActiveSupportChatId();
+    const isSupportNotification = [
+      "Support",
+      "SupportTicket",
+      "Ticket",
+      "SupportChat",
+    ].includes(String(data.referenceModel));
+    const isSameTicket =
+      isSupportNotification &&
+      data.referenceId &&
+      String(data.referenceId) === activeTicketId;
+
+    const shouldShow = !isSameTicket;
+    return {
+      shouldShowAlert: shouldShow,
+      shouldShowBanner: shouldShow,
+      shouldShowList: shouldShow,
+      shouldPlaySound: shouldShow,
+      shouldSetBadge: shouldShow,
+    };
+  },
 });
 
 export default function RootLayout() {
@@ -51,6 +70,7 @@ export default function RootLayout() {
               id: String(data.referenceId),
             },
           });
+          return;
         }
 
         if (data.referenceModel === "GiftCode") {
@@ -60,6 +80,23 @@ export default function RootLayout() {
               id: String(data.referenceId),
             },
           });
+          return;
+        }
+
+        if (
+          data.referenceModel === "Support" ||
+          data.referenceModel === "SupportTicket" ||
+          data.referenceModel === "Ticket" ||
+          data.referenceModel === "SupportChat"
+        ) {
+          if (data.referenceId) {
+            router.push({
+              pathname: "/(support)/chat/[id]",
+              params: {
+                id: String(data.referenceId),
+              },
+            });
+          }
         }
       },
     );
@@ -109,41 +146,45 @@ export default function RootLayout() {
   }
   return (
     <PaperProvider theme={paperTheme}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          {/* AUTH */}
-          <Stack.Protected
-            guard={(!!user && !user.isVerified) || !user || user?.isBlock}
-          >
-            <Stack.Screen name="auth" />
-          </Stack.Protected>
+      <SafeAreaProvider>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <Stack screenOptions={{ headerShown: false }}>
+            {/* AUTH */}
+            <Stack.Protected
+              guard={(!!user && !user.isVerified) || !user || user?.isBlock}
+            >
+              <Stack.Screen name="auth" />
+            </Stack.Protected>
 
-          {/* USER */}
-          <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
-            <Stack.Screen name="(user)" />
-          </Stack.Protected>
+            {/* USER */}
+            <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
+              <Stack.Screen name="(user)" />
+            </Stack.Protected>
 
-          {/* EXTRA (with clean header titles + back button) */}
-          <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
-            <Stack.Screen name="extra" />
-          </Stack.Protected>
+            {/* EXTRA (with clean header titles + back button) */}
+            <Stack.Protected guard={!!user && user.isVerified && !user.isBlock}>
+              <Stack.Screen name="extra" />
+            </Stack.Protected>
 
-          {/* ADMIN */}
-          <Stack.Protected
-            guard={
-              !!user &&
-              user.isVerified &&
-              !user.isBlock &&
-              user.role === "admin"
-            }
-          >
-            <Stack.Screen name="(admin)" />
-          </Stack.Protected>
-        </Stack>
+            {/* ADMIN */}
+            <Stack.Protected
+              guard={
+                !!user &&
+                user.isVerified &&
+                !user.isBlock &&
+                user.role === "admin"
+              }
+            >
+              <Stack.Screen name="(admin)" />
+            </Stack.Protected>
+          </Stack>
 
-        <Toast />
-        <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-      </ThemeProvider>
+          <Toast />
+          {/* <StatusBar style={colorScheme === "dark" ? "light" : "dark"} /> */}
+        </ThemeProvider>
+      </SafeAreaProvider>
     </PaperProvider>
   );
 }

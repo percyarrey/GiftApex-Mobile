@@ -233,7 +233,7 @@ export default function BestDeals() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push("/extra/support")}
+            onPress={() => router.push("/(support)/messages")}
           >
             <View style={styles.actionIconContainer}>
               <Ionicons name="help-circle" size={24} color={THEME} />

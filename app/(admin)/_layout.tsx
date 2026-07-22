@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /* =========================================================
    THEME COLORS
@@ -75,11 +76,17 @@ function HeaderRight({ recentRequestCount }: { recentRequestCount: number }) {
 function CustomDrawerContent(props: any) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const firstLetter = (user?.name || "A").charAt(0).toUpperCase();
 
   return (
-    <View style={styles.drawerContainer}>
+    <View
+      style={[
+        styles.drawerContainer,
+        { paddingTop: insets.top || 16, paddingBottom: insets.bottom || 16 },
+      ]}
+    >
       <DrawerContentScrollView
         {...props}
         showsVerticalScrollIndicator={false}
@@ -478,6 +485,7 @@ const styles = StyleSheet.create({
     gap: 10,
     margin: 16,
     paddingVertical: 15,
+    paddingBottom: 18,
     borderRadius: 18,
     backgroundColor: "rgba(239,68,68,0.12)",
   },
