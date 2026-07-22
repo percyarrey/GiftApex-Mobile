@@ -23,7 +23,7 @@
 122:     try {
 123:       setSending(true);
 124:       const res = await fetch(
-125:         `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}/messages`,
+125:         `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets/${id}/messages`,
 126:         {
 127:           method: "POST",
 128:           headers,
@@ -49,7 +49,7 @@
 148:   const updateTicket = async (action: string, priority?: string) => {
 149:     try {
 150:       const res = await fetch(
-151:         `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}`,
+151:         `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets/${id}`,
 152:         {
 153:           method: "PATCH",
 154:           headers,

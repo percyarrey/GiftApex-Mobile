@@ -1,7 +1,8 @@
 import { useAuthStore } from "@/store/useAuthStore";
+import { getActiveSupportChatId } from "@/utils/activeSupportChat";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -50,12 +51,14 @@ export default function MessagesScreen() {
   const load = useCallback(
     async (refresh = false) => {
       try {
-        refresh ? setRefreshing(true) : setLoading(true);
+        if (refresh) {
+          setRefreshing(true);
+        }
         const query = new URLSearchParams({ page: "1", limit: "50" });
         if (search.trim()) query.set("search", search.trim());
         if (status !== "All") query.set("status", status);
         const response = await fetch(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets?${query}`,
+          `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets?${query}`,
           { headers: { "x-user-email": user?.email || "" } },
         );
         const data = await response.json();
@@ -80,6 +83,85 @@ export default function MessagesScreen() {
       load();
     }, [load]),
   );
+
+  // realtime updates for ticket list: prefer WebSocket, fallback to polling
+  useEffect(() => {
+    const WS_URL = process.env.EXPO_PUBLIC_WS_URL;
+    let ws: WebSocket | null = null;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const handleIncoming = (payload: any) => {
+      try {
+        // expecting payload.type === 'message' and payload.message contains ticketId
+        if (!payload) return;
+        const type = payload.type;
+        const msg = payload.message || payload;
+        const ticketId = msg?.ticketId || msg?.ticket || payload?.ticketId;
+        if (!ticketId) return;
+
+        const active = getActiveSupportChatId();
+
+        setTickets((prev) => {
+          const idx = prev.findIndex(
+            (t) => t._id === ticketId || t.id === ticketId,
+          );
+          if (idx === -1) {
+            // unknown ticket - refresh list
+            load();
+            return prev;
+          }
+          const updated = [...prev];
+          const existing = updated[idx];
+          updated[idx] = {
+            ...existing,
+            lastMessage:
+              msg.message ||
+              (msg.type === "image" ? "Image" : existing.lastMessage),
+            lastMessageAt: msg.createdAt || new Date().toISOString(),
+          };
+          // mark unread unless the user is actively viewing this ticket
+          const shouldMarkUnread = active !== String(ticketId);
+          if (user?.role === "admin") {
+            // incoming from user should mark unread for admin
+            if (msg.senderRole === "user")
+              updated[idx].unreadByAdmin = shouldMarkUnread;
+          } else {
+            if (msg.senderRole === "admin")
+              updated[idx].unreadByUser = shouldMarkUnread;
+          }
+          return updated;
+        });
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    if (WS_URL) {
+      try {
+        ws = new WebSocket(`${WS_URL.replace(/\/$/, "")}/support/tickets`);
+        ws.onmessage = (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            handleIncoming(payload);
+          } catch (err) {
+            // ignore
+          }
+        };
+      } catch (err) {
+        ws = null;
+      }
+    } else {
+      timer = setInterval(() => load(), 5000);
+    }
+
+    return () => {
+      if (ws)
+        try {
+          ws.close();
+        } catch {}
+      if (timer) clearInterval(timer);
+    };
+  }, [user?.role, load]);
   const renderTicket = ({ item }: { item: Ticket }) => {
     const unread = isAdmin ? item.unreadByAdmin : item.unreadByUser;
     const date = item.lastMessageAt || item.updatedAt;
@@ -181,7 +263,9 @@ export default function MessagesScreen() {
       ) : (
         <FlatList
           data={tickets}
-          keyExtractor={(item) => item._id || item.id!}
+          keyExtractor={(item, index) =>
+            `${String(item._id || item.id || "")}-${index}`
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

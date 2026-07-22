@@ -189,6 +189,7 @@ type User = {
     pending: number;
   };
   unreadNotifications: number;
+  unreadSupportTickets: number;
 };
 
 // ================= API =================

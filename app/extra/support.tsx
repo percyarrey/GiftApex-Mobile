@@ -107,7 +107,7 @@ export default function SupportScreen() {
     try {
       setLoading(true);
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets`,
+        `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets`,
         {
           method: "POST",
           headers: {

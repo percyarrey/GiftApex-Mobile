@@ -39,7 +39,6 @@ Notifications.setNotificationHandler({
 
     const shouldShow = !isSameTicket;
     return {
-      shouldShowAlert: shouldShow,
       shouldShowBanner: shouldShow,
       shouldShowList: shouldShow,
       shouldPlaySound: shouldShow,

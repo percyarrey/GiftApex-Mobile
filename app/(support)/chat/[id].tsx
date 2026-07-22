@@ -112,42 +112,50 @@ export default function ChatScreen() {
     });
   };
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoading(true);
-      const [ticketRes, messageRes] = await Promise.all([
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}`, {
-          headers,
-        }),
-        fetch(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}/messages`,
-          { headers },
-        ),
-      ]);
-      const td = await ticketRes.json();
-      const md = await messageRes.json();
-      if (!ticketRes.ok) throw new Error(td.message || "Unable to load ticket");
-      setTicket(td.ticket || td.data || td);
-      if (messageRes.ok)
-        setMessages(
-          dedupeMessages(md.messages || md.data?.messages || md.data || []),
-        );
-    } catch (e: any) {
-      Toast.show({
-        type: "error",
-        text1: "Could not load conversation",
-        text2: e.message,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [id, user?.email]);
+  const load = useCallback(
+    async (opts: { showLoading?: boolean } = { showLoading: true }) => {
+      const { showLoading = true } = opts || {};
+      if (!id) return;
+      try {
+        if (showLoading) setLoading(true);
+        const [ticketRes, messageRes] = await Promise.all([
+          fetch(
+            `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets/${id}`,
+            {
+              headers,
+            },
+          ),
+          fetch(
+            `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets/${id}/messages`,
+            { headers },
+          ),
+        ]);
+        const td = await ticketRes.json();
+        const md = await messageRes.json();
+        if (!ticketRes.ok)
+          throw new Error(td.message || "Unable to load ticket");
+        setTicket(td.ticket || td.data || td);
+        if (messageRes.ok)
+          setMessages(
+            dedupeMessages(md.messages || md.data?.messages || md.data || []),
+          );
+      } catch (e: any) {
+        Toast.show({
+          type: "error",
+          text1: "Could not load conversation",
+          text2: e.message,
+        });
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [id, user?.email],
+  );
   const setViewing = async (viewing: boolean) => {
     if (!id) return;
     try {
       await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}`,
+        `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets/${id}`,
         {
           method: "PATCH",
           headers,
@@ -216,7 +224,7 @@ export default function ChatScreen() {
       timer = setInterval(async () => {
         try {
           const res = await fetch(
-            `${API_URL}/api/support/tickets/${id}/messages`,
+            `${API_URL}/api/mobile/support/tickets/${id}/messages`,
             { headers },
           );
           const md = await res.json();
@@ -279,7 +287,7 @@ export default function ChatScreen() {
     try {
       setSending(true);
       const res = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}/messages`,
+        `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets/${id}/messages`,
         {
           method: "POST",
           headers,
@@ -305,7 +313,7 @@ export default function ChatScreen() {
   const updateTicket = async (action: string, priority?: string) => {
     try {
       const res = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/support/tickets/${id}`,
+        `${process.env.EXPO_PUBLIC_API_URL}/api/mobile/support/tickets/${id}`,
         {
           method: "PATCH",
           headers,
@@ -316,7 +324,7 @@ export default function ChatScreen() {
       if (!res.ok || data.success === false)
         throw new Error(data.message || "Update failed");
       setTicket(data.ticket || data.data || data);
-      await load();
+      await load({ showLoading: false });
     } catch (e: any) {
       Toast.show({
         type: "error",
@@ -380,13 +388,13 @@ export default function ChatScreen() {
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: "#F5F7F5" }}
-      edges={["top", "bottom"]}
+      edges={["bottom"]}
     >
       <KeyboardAvoidingView
         style={[styles.container, { paddingBottom: insets.bottom }]}
         behavior="padding"
         keyboardVerticalOffset={
-          Platform.OS === "ios" ? insets.top + 90 : insets.top + 85
+          Platform.OS === "ios" ? insets.top + 90 : insets.top + 60
         }
       >
         <View style={styles.info}>
@@ -451,7 +459,7 @@ export default function ChatScreen() {
             style={styles.list}
             data={messages}
             keyExtractor={(item, index) =>
-              item._id ? String(item._id) : `support-message-${index}`
+              `support-message-${index}-${String(item._id ?? item.createdAt ?? item.message ?? "")}`
             }
             contentContainerStyle={[
               styles.messages,

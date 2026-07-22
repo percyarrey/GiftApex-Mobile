@@ -33,9 +33,13 @@ function HeaderRight() {
         style={styles.iconWrapper}
       >
         <Ionicons name="headset-outline" size={24} color="black" />
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>3</Text>
-        </View>
+        {(user?.unreadSupportTickets ?? 0) > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {user?.unreadSupportTickets.toString()}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity

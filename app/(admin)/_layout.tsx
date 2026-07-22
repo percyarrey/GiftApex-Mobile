@@ -34,6 +34,7 @@ const PRIMARY_DARK = "rgb(0, 85, 0)";
 
 function HeaderRight({ recentRequestCount }: { recentRequestCount: number }) {
   const router = useRouter();
+  const { user } = useAuthStore();
 
   return (
     <View style={styles.headerRightContainer}>
@@ -61,9 +62,13 @@ function HeaderRight({ recentRequestCount }: { recentRequestCount: number }) {
           size={22}
           color="#FFFFFF"
         />
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>5</Text>
-        </View>
+        {(user?.unreadSupportTickets ?? 0) > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {user?.unreadSupportTickets.toString()}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     </View>
   );
