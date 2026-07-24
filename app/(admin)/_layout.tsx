@@ -348,6 +348,17 @@ export default function AdminLayout() {
           }}
         />
 
+        {/* ANNOUNCEMENTS */}
+        <Drawer.Screen
+          name="announcements"
+          options={{
+            title: "Announcements",
+            drawerIcon: ({ color, size }) => (
+              <Ionicons name="megaphone-outline" size={size} color={color} />
+            ),
+          }}
+        />
+
         {/* PRICE LIST */}
         <Drawer.Screen
           name="price-list"

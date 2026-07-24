@@ -1,10 +1,16 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,6 +23,7 @@ import Toast from "react-native-toast-message";
 
 const PRIMARY = "rgb(1, 107, 1)";
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 type Priority = "info" | "success" | "warning" | "important";
 type AnnouncementType = "text" | "image";
@@ -25,7 +32,7 @@ type Announcement = {
   _id: string;
   title?: string;
   message?: string;
-  imageUrl?: string;
+  imageBase64?: string; // Base64 encoded image
   type: AnnouncementType;
   priority?: Priority;
   duration?: number; // in days, 0 means never expires
@@ -47,16 +54,28 @@ export default function AnnouncementsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [posting, setPosting] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Text announcement state
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [priority, setPriority] = useState<Priority>("info");
   const [announcementType, setAnnouncementType] =
     useState<AnnouncementType>("text");
-  const [imageUrl, setImageUrl] = useState("");
-  const [durationDays, setDurationDays] = useState<number>(7); // default 7 days
+  const [priority, setPriority] = useState<Priority>("info");
+  const [durationDays, setDurationDays] = useState(7);
+
+  // Image announcement state
+  const [selectedImageBase64, setSelectedImageBase64] = useState<string>("");
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string>("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Email state
   const [recipientEmail, setRecipientEmail] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
+
+  // Carousel state
+  const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+  const carouselRef = useRef<FlatList>(null);
 
   const headers = useMemo(
     () => ({
@@ -65,6 +84,43 @@ export default function AnnouncementsScreen() {
     }),
     [user?.email],
   );
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadingImage(true);
+        const asset = result.assets[0];
+
+        // Read and convert to base64
+        const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        setSelectedImageBase64(base64);
+        setSelectedImagePreview(asset.uri);
+        Toast.show({
+          type: "success",
+          text1: "Image selected",
+          text2: "Ready to publish",
+        });
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Could not pick image",
+        text2: error.message,
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const fetchAnnouncements = useCallback(async () => {
     try {
@@ -99,10 +155,10 @@ export default function AnnouncementsScreen() {
         return;
       }
     } else {
-      if (!imageUrl.trim()) {
+      if (!selectedImageBase64.trim()) {
         Toast.show({
           type: "error",
-          text1: "Add an image URL for image announcements",
+          text1: "Upload an image for image announcements",
         });
         return;
       }
@@ -118,7 +174,7 @@ export default function AnnouncementsScreen() {
         payload.title = title.trim();
         payload.message = message.trim();
       } else {
-        payload.imageUrl = imageUrl.trim();
+        payload.imageBase64 = selectedImageBase64;
       }
       const response = await fetch(`${API_URL}/api/admin/announcements`, {
         method: "POST",
@@ -130,7 +186,8 @@ export default function AnnouncementsScreen() {
         throw new Error(data.message || "Unable to publish announcement");
       setTitle("");
       setMessage("");
-      setImageUrl("");
+      setSelectedImageBase64("");
+      setSelectedImagePreview("");
       setPriority("info");
       setAnnouncementType("text");
       setDurationDays(7);
@@ -202,16 +259,36 @@ export default function AnnouncementsScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
+            if (!item._id) {
+              Toast.show({
+                type: "error",
+                text1: "Unable to delete announcement",
+                text2: "Missing announcement ID",
+              });
+              return;
+            }
+
             try {
               const response = await fetch(
                 `${API_URL}/api/admin/announcements/${item._id}`,
                 { method: "DELETE", headers },
               );
-              if (!response.ok)
-                throw new Error("Unable to delete announcement");
+              const data = await response.json().catch(() => null);
+
+              if (!response.ok || data?.success === false) {
+                throw new Error(
+                  data?.message || "Unable to delete announcement",
+                );
+              }
+
               setAnnouncements((current) =>
                 current.filter((announcement) => announcement._id !== item._id),
               );
+              Toast.show({
+                type: "success",
+                text1: "Announcement deleted",
+              });
+              fetchAnnouncements();
             } catch (error: any) {
               Toast.show({
                 type: "error",
@@ -238,6 +315,45 @@ export default function AnnouncementsScreen() {
         : item.duration === 0
           ? "Never expires"
           : null;
+
+    if (isImage) {
+      return (
+        <View style={styles.announcementImageContainer}>
+          {item.imageBase64 && (
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }}
+              style={styles.announcementImageFull}
+            />
+          )}
+          <View style={styles.announcementImageOverlay}>
+            <View style={styles.announcementImageMeta}>
+              <View
+                style={[
+                  styles.announcementImagePriority,
+                  { backgroundColor: `${meta.color}` },
+                ]}
+              >
+                <Text style={styles.announcementImagePriorityText}>
+                  {meta.label}
+                </Text>
+              </View>
+              {durationLabel && (
+                <Text style={styles.announcementImageDuration}>
+                  {durationLabel}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity
+              onPress={() => deleteAnnouncement(item)}
+              style={styles.announcementImageDeleteBtn}
+            >
+              <Ionicons name="trash-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.announcementCard}>
         <View
@@ -246,30 +362,11 @@ export default function AnnouncementsScreen() {
             { backgroundColor: `${meta.color}18` },
           ]}
         >
-          <Ionicons
-            name={isImage ? "image-outline" : "megaphone-outline"}
-            size={21}
-            color={meta.color}
-          />
+          <Ionicons name="megaphone-outline" size={21} color={meta.color} />
         </View>
         <View style={styles.announcementText}>
-          {isImage ? (
-            <>
-              <Text style={styles.announcementTitle}>
-                📷 Image Announcement
-              </Text>
-              {item.imageUrl && (
-                <Text style={styles.announcementMessage} numberOfLines={2}>
-                  {item.imageUrl}
-                </Text>
-              )}
-            </>
-          ) : (
-            <>
-              <Text style={styles.announcementTitle}>{item.title}</Text>
-              <Text style={styles.announcementMessage}>{item.message}</Text>
-            </>
-          )}
+          <Text style={styles.announcementTitle}>{item.title}</Text>
+          <Text style={styles.announcementMessage}>{item.message}</Text>
           <View style={styles.metaRow}>
             <Text style={[styles.priorityText, { color: meta.color }]}>
               {meta.label}
@@ -290,271 +387,318 @@ export default function AnnouncementsScreen() {
   };
 
   return (
-    <FlatList
-      data={announcements}
-      keyExtractor={(item) => item._id}
-      renderItem={renderAnnouncement}
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            fetchAnnouncements();
-          }}
-          colors={[PRIMARY]}
-        />
-      }
-      ListHeaderComponent={
-        <>
-          <View style={styles.hero}>
-            <View style={styles.heroIcon}>
-              <Ionicons name="megaphone" size={28} color="#fff" />
-            </View>
-            <View>
-              <Text style={styles.heroTitle}>Announcements</Text>
-              <Text style={styles.heroText}>
-                Keep every GiftApex user informed.
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Post an announcement</Text>
-            <Text style={styles.formHint}>
-              Publishing also creates an in-app notification for users.
-            </Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Announcement title"
-              style={styles.input}
-              maxLength={100}
-            />
-            <TextInput
-              value={message}
-              onChangeText={setMessage}
-              placeholder="Write your announcement..."
-              style={[styles.input, styles.textarea]}
-              multiline
-              textAlignVertical="top"
-              maxLength={600}
-            />
-            {/* Announcement Type Toggle */}
-            <Text style={styles.fieldLabel}>Announcement type</Text>
-            <View style={styles.typeToggleRow}>
-              <TouchableOpacity
-                onPress={() => setAnnouncementType("text")}
-                style={[
-                  styles.typeToggleBtn,
-                  announcementType === "text" && styles.typeToggleActive,
-                ]}
-              >
-                <Ionicons
-                  name="text"
-                  size={16}
-                  color={announcementType === "text" ? "#fff" : "#6B7280"}
-                />
-                <Text
-                  style={[
-                    styles.typeToggleText,
-                    announcementType === "text" && styles.typeToggleTextActive,
-                  ]}
-                >
-                  Text
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setAnnouncementType("image")}
-                style={[
-                  styles.typeToggleBtn,
-                  announcementType === "image" && styles.typeToggleActiveImg,
-                ]}
-              >
-                <Ionicons
-                  name="image-outline"
-                  size={16}
-                  color={announcementType === "image" ? "#fff" : "#6B7280"}
-                />
-                <Text
-                  style={[
-                    styles.typeToggleText,
-                    announcementType === "image" && styles.typeToggleTextActive,
-                  ]}
-                >
-                  Image
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {announcementType === "image" && (
-              <TextInput
-                value={imageUrl}
-                onChangeText={setImageUrl}
-                placeholder="https://example.com/image.jpg"
-                style={styles.input}
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-            )}
-
-            {/* Duration Selector */}
-            <Text style={styles.fieldLabel}>Duration</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.priorityRow}
-            >
-              {[
-                { label: "1 day", value: 1 },
-                { label: "3 days", value: 3 },
-                { label: "7 days", value: 7 },
-                { label: "14 days", value: 14 },
-                { label: "30 days", value: 30 },
-                { label: "Never", value: 0 },
-              ].map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => setDurationDays(opt.value)}
-                  style={[
-                    styles.priorityChip,
-                    durationDays === opt.value && {
-                      backgroundColor: PRIMARY,
-                      borderColor: PRIMARY,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.priorityChipText,
-                      durationDays === opt.value && { color: "#fff" },
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Text style={styles.fieldLabel}>Display style</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.priorityRow}
-            >
-              {priorities.map((entry) => (
-                <TouchableOpacity
-                  key={entry.value}
-                  onPress={() => setPriority(entry.value)}
-                  style={[
-                    styles.priorityChip,
-                    priority === entry.value && {
-                      backgroundColor: entry.color,
-                      borderColor: entry.color,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.priorityChipText,
-                      priority === entry.value && { color: "#fff" },
-                    ]}
-                  >
-                    {entry.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              disabled={posting}
-              onPress={postAnnouncement}
-              style={[styles.primaryButton, posting && styles.disabledButton]}
-            >
-              {posting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="send" size={18} color="#fff" />
-                  <Text style={styles.primaryButtonText}>
-                    Publish & notify users
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.formCard}>
-            <View style={styles.emailTitleRow}>
-              <View style={styles.emailIcon}>
-                <Ionicons name="mail" size={20} color="#7C3AED" />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.keyboardView}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+    >
+      <FlatList
+        data={announcements}
+        keyExtractor={(item) => item._id}
+        renderItem={renderAnnouncement}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchAnnouncements();
+            }}
+            colors={[PRIMARY]}
+          />
+        }
+        ListHeaderComponent={
+          <>
+            <View style={styles.hero}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="megaphone" size={28} color="#fff" />
               </View>
               <View>
-                <Text style={styles.formTitle}>Send a direct email</Text>
-                <Text style={styles.formHint}>
-                  Send a message to one specific user.
+                <Text style={styles.heroTitle}>Announcements</Text>
+                <Text style={styles.heroText}>
+                  Keep every GiftApex user informed.
                 </Text>
               </View>
             </View>
-            <TextInput
-              value={recipientEmail}
-              onChangeText={setRecipientEmail}
-              placeholder="User email address"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-            />
-            <TextInput
-              value={emailSubject}
-              onChangeText={setEmailSubject}
-              placeholder="Email subject"
-              style={styles.input}
-              maxLength={140}
-            />
-            <TextInput
-              value={emailMessage}
-              onChangeText={setEmailMessage}
-              placeholder="Write your email..."
-              style={[styles.input, styles.textarea]}
-              multiline
-              textAlignVertical="top"
-              maxLength={3000}
-            />
-            <TouchableOpacity
-              disabled={sendingEmail}
-              onPress={sendEmail}
-              style={[
-                styles.emailButton,
-                sendingEmail && styles.disabledButton,
-              ]}
-            >
-              {sendingEmail ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="paper-plane-outline" size={18} color="#fff" />
-                  <Text style={styles.primaryButtonText}>Send email</Text>
-                </>
+
+            <View style={styles.formCard}>
+              <Text style={styles.formTitle}>Post an announcement</Text>
+              <Text style={styles.formHint}>
+                Publishing also creates an in-app notification for users.
+              </Text>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Announcement title"
+                style={styles.input}
+                maxLength={100}
+              />
+              <TextInput
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Write your announcement..."
+                style={[styles.input, styles.textarea]}
+                multiline
+                textAlignVertical="top"
+                maxLength={600}
+              />
+              {/* Announcement Type Toggle */}
+              <Text style={styles.fieldLabel}>Announcement type</Text>
+              <View style={styles.typeToggleRow}>
+                <TouchableOpacity
+                  onPress={() => setAnnouncementType("text")}
+                  style={[
+                    styles.typeToggleBtn,
+                    announcementType === "text" && styles.typeToggleActive,
+                  ]}
+                >
+                  <Ionicons
+                    name="text"
+                    size={16}
+                    color={announcementType === "text" ? "#fff" : "#6B7280"}
+                  />
+                  <Text
+                    style={[
+                      styles.typeToggleText,
+                      announcementType === "text" &&
+                        styles.typeToggleTextActive,
+                    ]}
+                  >
+                    Text
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setAnnouncementType("image")}
+                  style={[
+                    styles.typeToggleBtn,
+                    announcementType === "image" && styles.typeToggleActiveImg,
+                  ]}
+                >
+                  <Ionicons
+                    name="image-outline"
+                    size={16}
+                    color={announcementType === "image" ? "#fff" : "#6B7280"}
+                  />
+                  <Text
+                    style={[
+                      styles.typeToggleText,
+                      announcementType === "image" &&
+                        styles.typeToggleTextActive,
+                    ]}
+                  >
+                    Image
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {announcementType === "image" && (
+                <View>
+                  <TouchableOpacity
+                    disabled={uploadingImage}
+                    onPress={pickImage}
+                    style={[
+                      styles.imagePickerButton,
+                      uploadingImage && styles.disabledButton,
+                    ]}
+                  >
+                    {uploadingImage ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : selectedImagePreview ? (
+                      <>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color="#fff"
+                        />
+                        <Text style={styles.primaryButtonText}>
+                          Image selected
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="image-outline" size={18} color="#fff" />
+                        <Text style={styles.primaryButtonText}>
+                          Pick an image
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  {selectedImagePreview && (
+                    <Image
+                      source={{ uri: selectedImagePreview }}
+                      style={styles.imagePreview}
+                    />
+                  )}
+                </View>
               )}
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.listTitle}>Published announcements</Text>
-        </>
-      }
-      ListEmptyComponent={
-        loading ? (
-          <ActivityIndicator color={PRIMARY} size="large" />
-        ) : (
-          <Text style={styles.empty}>No announcements yet.</Text>
-        )
-      }
-    />
+
+              {/* Duration Selector */}
+              <Text style={styles.fieldLabel}>Duration</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.priorityRow}
+              >
+                {[
+                  { label: "1 day", value: 1 },
+                  { label: "3 days", value: 3 },
+                  { label: "7 days", value: 7 },
+                  { label: "14 days", value: 14 },
+                  { label: "30 days", value: 30 },
+                  { label: "Never", value: 0 },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => setDurationDays(opt.value)}
+                    style={[
+                      styles.priorityChip,
+                      durationDays === opt.value && {
+                        backgroundColor: PRIMARY,
+                        borderColor: PRIMARY,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.priorityChipText,
+                        durationDays === opt.value && { color: "#fff" },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.fieldLabel}>Display style</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.priorityRow}
+              >
+                {priorities.map((entry) => (
+                  <TouchableOpacity
+                    key={entry.value}
+                    onPress={() => setPriority(entry.value)}
+                    style={[
+                      styles.priorityChip,
+                      priority === entry.value && {
+                        backgroundColor: entry.color,
+                        borderColor: entry.color,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.priorityChipText,
+                        priority === entry.value && { color: "#fff" },
+                      ]}
+                    >
+                      {entry.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                disabled={posting}
+                onPress={postAnnouncement}
+                style={[styles.primaryButton, posting && styles.disabledButton]}
+              >
+                {posting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="send" size={18} color="#fff" />
+                    <Text style={styles.primaryButtonText}>
+                      Publish & notify users
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formCard}>
+              <View style={styles.emailTitleRow}>
+                <View style={styles.emailIcon}>
+                  <Ionicons name="mail" size={20} color="#7C3AED" />
+                </View>
+                <View>
+                  <Text style={styles.formTitle}>Send a direct email</Text>
+                  <Text style={styles.formHint}>
+                    Send a message to one specific user.
+                  </Text>
+                </View>
+              </View>
+              <TextInput
+                value={recipientEmail}
+                onChangeText={setRecipientEmail}
+                placeholder="User email address"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={styles.input}
+              />
+              <TextInput
+                value={emailSubject}
+                onChangeText={setEmailSubject}
+                placeholder="Email subject"
+                style={styles.input}
+                maxLength={140}
+              />
+              <TextInput
+                value={emailMessage}
+                onChangeText={setEmailMessage}
+                placeholder="Write your email..."
+                style={[styles.input, styles.textarea]}
+                multiline
+                textAlignVertical="top"
+                maxLength={3000}
+              />
+              <TouchableOpacity
+                disabled={sendingEmail}
+                onPress={sendEmail}
+                style={[
+                  styles.emailButton,
+                  sendingEmail && styles.disabledButton,
+                ]}
+              >
+                {sendingEmail ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="paper-plane-outline"
+                      size={18}
+                      color="#fff"
+                    />
+                    <Text style={styles.primaryButtonText}>Send email</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.listTitle}>Published announcements</Text>
+          </>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator color={PRIMARY} size="large" />
+          ) : (
+            <Text style={styles.empty}>No announcements yet.</Text>
+          )
+        }
+      />
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
+  },
   container: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
     backgroundColor: "#F5F7FA",
     flexGrow: 1,
   },
@@ -625,6 +769,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  imagePickerButton: {
+    backgroundColor: "#7C3AED",
+    borderRadius: 13,
+    minHeight: 50,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
   emailButton: {
     backgroundColor: "#7C3AED",
     borderRadius: 13,
@@ -675,6 +829,63 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     lineHeight: 18,
+  },
+  announcementImageContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginBottom: 10,
+    overflow: "hidden",
+    elevation: 2,
+    height: 280,
+  },
+  announcementImageFull: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  announcementImageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "space-between",
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  announcementImageMeta: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    flex: 1,
+  },
+  announcementImagePriority: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  announcementImagePriorityText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  announcementImageDuration: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  announcementImageDeleteBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imagePreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+    marginTop: 10,
+    resizeMode: "contain",
   },
   priorityText: { marginTop: 7, fontSize: 12, fontWeight: "800" },
   metaRow: {

@@ -2,6 +2,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { setActiveSupportChatId } from "@/utils/activeSupportChat";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 import {
   useFocusEffect,
   useLocalSearchParams,
@@ -88,6 +90,7 @@ export default function ChatScreen() {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
+  const [attachedImage, setAttachedImage] = useState("");
   const [previewImage, setPreviewImage] = useState("");
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -280,10 +283,70 @@ export default function ChatScreen() {
     setMenuVisible(false);
   };
 
+  const convertToBase64 = async (uri: string) => {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: "base64",
+    });
+    if (!base64) throw new Error("Base64 conversion failed");
+    return `data:image/jpeg;base64,${base64}`;
+  };
+
+  const pickImage = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Toast.show({
+          type: "error",
+          text1: "Permission required",
+          text2: "Allow photo access to attach an image.",
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.6,
+        base64: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const imageBase64 = asset.base64
+        ? `data:image/jpeg;base64,${asset.base64}`
+        : await convertToBase64(asset.uri);
+
+      if ((imageBase64.length * 3) / 4 > 2_500_000) {
+        Toast.show({
+          type: "error",
+          text1: "Image too large",
+          text2: "Please choose an image smaller than 2.5 MB.",
+        });
+        return;
+      }
+      setAttachedImage(imageBase64);
+    } catch (e) {
+      Toast.show({
+        type: "error",
+        text1: "Image error",
+        text2: "We couldn't process that image. Please try another.",
+      });
+    }
+  };
+
   const send = async () => {
-    if (!text.trim() || sending) return;
-    const value = text.trim();
+    const messageText = text.trim();
+    const imageToSend = attachedImage;
+    if (!messageText && !imageToSend) return;
+    const payload: Record<string, any> = {
+      type: imageToSend ? "image" : "text",
+      message: messageText || undefined,
+    };
+    if (imageToSend) {
+      payload.image = imageToSend;
+    }
     setText("");
+    setAttachedImage("");
     try {
       setSending(true);
       const res = await fetch(
@@ -291,7 +354,7 @@ export default function ChatScreen() {
         {
           method: "POST",
           headers,
-          body: JSON.stringify({ message: value, type: "text" }),
+          body: JSON.stringify(payload),
         },
       );
       const data = await res.json();
@@ -300,7 +363,8 @@ export default function ChatScreen() {
       setMessages((p) => [...p, data.message || data.data || data]);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
     } catch (e: any) {
-      setText(value);
+      setText(messageText);
+      if (imageToSend) setAttachedImage(imageToSend);
       Toast.show({
         type: "error",
         text1: "Message not sent",
@@ -538,26 +602,59 @@ export default function ChatScreen() {
             </Text>
           </View>
         ) : canReply ? (
-          <View style={styles.inputRow}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              placeholder="Write a message"
-              multiline
-              style={styles.input}
-            />
-            <TouchableOpacity
-              disabled={!text.trim() || sending}
-              onPress={send}
-              style={[styles.send, !text.trim() && styles.disabled]}
-            >
-              {sending ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Ionicons name="send" size={19} color="#fff" />
-              )}
-            </TouchableOpacity>
-          </View>
+          <>
+            {attachedImage ? (
+              <View style={styles.attachmentPreview}>
+                <Image
+                  source={{ uri: attachedImage }}
+                  style={styles.attachedImagePreview}
+                />
+                <TouchableOpacity
+                  onPress={() => setAttachedImage("")}
+                  style={styles.removeAttachment}
+                >
+                  <Ionicons name="close" size={18} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.attachmentNote} numberOfLines={1}>
+                  Image attached. Add a caption or send it now.
+                </Text>
+              </View>
+            ) : null}
+            <View style={styles.inputRow}>
+              <TouchableOpacity
+                onPress={pickImage}
+                style={styles.imageButton}
+                disabled={sending}
+              >
+                <Ionicons name="image-outline" size={22} color={PRIMARY} />
+              </TouchableOpacity>
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                placeholder={
+                  attachedImage
+                    ? "Add image caption (optional)"
+                    : "Write a message"
+                }
+                multiline
+                style={styles.input}
+              />
+              <TouchableOpacity
+                disabled={(!text.trim() && !attachedImage) || sending}
+                onPress={send}
+                style={[
+                  styles.send,
+                  !text.trim() && !attachedImage && styles.disabled,
+                ]}
+              >
+                {sending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Ionicons name="send" size={19} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
         ) : (
           <View style={styles.closed}>
             <MaterialCommunityIcons
@@ -827,6 +924,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  attachmentPreview: {
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#E1E7E1",
+    padding: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  attachedImagePreview: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    resizeMode: "cover",
+  },
+  removeAttachment: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  attachmentNote: {
+    marginTop: 8,
+    color: "#667066",
+    fontSize: 12,
+    textAlign: "center",
+  },
   inputRow: {
     backgroundColor: "#fff",
     padding: 10,
@@ -835,6 +965,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 8,
+  },
+  imageButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#F1F5F2",
+    alignItems: "center",
+    justifyContent: "center",
   },
   input: {
     flex: 1,

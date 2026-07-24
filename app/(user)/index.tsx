@@ -51,7 +51,7 @@ type Announcement = {
   _id: string;
   title?: string;
   message?: string;
-  imageUrl?: string;
+  imageBase64?: string; // Base64 encoded image
   type: AnnouncementType;
   createdAt?: string;
   expiresAt?: string;
@@ -86,6 +86,7 @@ export default function HomeScreen() {
   const carouselRef = useRef<FlatList<Announcement>>(null);
   const { width: screenWidth } = Dimensions.get("window");
   const CAROUSEL_WIDTH = screenWidth - 32; // 16px padding on each side
+  const CAROUSEL_GAP = 12;
 
   const currentHour = new Date().getHours();
 
@@ -197,6 +198,25 @@ export default function HomeScreen() {
       run();
     }, []),
   );
+
+  // ================= CAROUSEL AUTOPLAY =================
+  useEffect(() => {
+    if (announcements.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setActiveIndex((prevIndex) => {
+        const nextIndex = (prevIndex + 1) % announcements.length;
+        carouselRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+        return nextIndex;
+      });
+    }, 15000); // 4 seconds autoplay
+
+    return () => clearInterval(interval);
+  }, [announcements.length]);
+
   const formatAmount = (amount?: number | null) => {
     if (amount == null) {
       return "--";
@@ -253,113 +273,6 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
-
-        {announcements.length > 0 && (
-          <View style={styles.announcementSection}>
-            <View style={styles.announcementHeading}>
-              <View style={styles.announcementHeadingIcon}>
-                <Ionicons name="megaphone" size={18} color="#EA580C" />
-              </View>
-              <Text style={styles.announcementSectionTitle}>Announcements</Text>
-              <View style={styles.livePill}>
-                <Text style={styles.livePillText}>LIVE</Text>
-              </View>
-            </View>
-
-            {/* ================= CAROUSEL (FlatList horizontal) ================= */}
-            <FlatList
-              ref={carouselRef}
-              data={announcements}
-              keyExtractor={(item) => item._id}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={CAROUSEL_WIDTH}
-              decelerationRate="fast"
-              snapToAlignment="start"
-              contentContainerStyle={{ paddingRight: 16 }}
-              onMomentumScrollEnd={(
-                event: NativeSyntheticEvent<NativeScrollEvent>,
-              ) => {
-                const index = Math.round(
-                  event.nativeEvent.contentOffset.x / CAROUSEL_WIDTH,
-                );
-                setActiveIndex(index);
-              }}
-              renderItem={({ item }) => {
-                const isImage = item.type === "image";
-                const important = item.priority === "important";
-
-                if (isImage && item.imageUrl) {
-                  // Full-width image card
-                  return (
-                    <View style={{ width: CAROUSEL_WIDTH }}>
-                      <Image
-                        source={{ uri: item.imageUrl }}
-                        style={styles.carouselImage}
-                        resizeMode="cover"
-                      />
-                    </View>
-                  );
-                }
-
-                // Text card
-                return (
-                  <View style={{ width: CAROUSEL_WIDTH, paddingRight: 12 }}>
-                    <View
-                      style={[
-                        styles.announcementCard,
-                        important && styles.announcementCardImportant,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.announcementIcon,
-                          important && styles.announcementIconImportant,
-                        ]}
-                      >
-                        <Ionicons
-                          name={
-                            important ? "alert-circle" : "megaphone-outline"
-                          }
-                          size={23}
-                          color={important ? "#DC2626" : "#EA580C"}
-                        />
-                      </View>
-                      <View style={styles.announcementContent}>
-                        <Text style={styles.announcementTitle}>
-                          {item.title}
-                        </Text>
-                        <Text style={styles.announcementMessage}>
-                          {item.message}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              }}
-            />
-
-            {/* ================= PAGINATION DOTS ================= */}
-            {announcements.length > 1 && (
-              <View style={styles.paginationDots}>
-                {announcements.map((_, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => {
-                      carouselRef.current?.scrollToIndex({ index });
-                      setActiveIndex(index);
-                    }}
-                    style={[
-                      styles.dot,
-                      activeIndex === index && styles.dotActive,
-                    ]}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        )}
 
         {/* ================= BALANCE CARD ================= */}
         <View style={styles.balanceCard}>
@@ -427,6 +340,124 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* ================= ANOUNCEMENT CARD ================= */}
+
+        {announcements.length > 0 && (
+          <View style={styles.announcementSection}>
+            <View style={styles.announcementHeading}>
+              <View style={styles.announcementHeadingIcon}>
+                <Ionicons name="megaphone" size={18} color="#EA580C" />
+              </View>
+              <Text style={styles.announcementSectionTitle}>Announcements</Text>
+              <View style={styles.livePill}>
+                <Text style={styles.livePillText}>LIVE</Text>
+              </View>
+            </View>
+
+            {/* ================= CAROUSEL (FlatList horizontal) ================= */}
+            <FlatList
+              ref={carouselRef}
+              data={announcements}
+              keyExtractor={(item) => item._id}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={CAROUSEL_WIDTH + CAROUSEL_GAP}
+              decelerationRate="fast"
+              snapToAlignment="start"
+              contentContainerStyle={{ paddingRight: 16, gap: CAROUSEL_GAP }}
+              scrollEventThrottle={16}
+              onMomentumScrollEnd={(
+                event: NativeSyntheticEvent<NativeScrollEvent>,
+              ) => {
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x /
+                    (CAROUSEL_WIDTH + CAROUSEL_GAP),
+                );
+                setActiveIndex(index);
+              }}
+              renderItem={({ item }) => {
+                const isImage = item.type === "image";
+                const important = item.priority === "important";
+
+                if (isImage && item.imageBase64) {
+                  // Full-width image card with base64 image
+                  return (
+                    <View style={{ width: CAROUSEL_WIDTH }}>
+                      <Image
+                        source={{
+                          uri: `data:image/jpeg;base64,${item.imageBase64}`,
+                        }}
+                        style={styles.carouselImage}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  );
+                }
+
+                // Text card - improved design with better centering
+                return (
+                  <View style={{ width: CAROUSEL_WIDTH }}>
+                    <View
+                      style={[
+                        styles.announcementCard,
+                        important && styles.announcementCardImportant,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.announcementIcon,
+                          important && styles.announcementIconImportant,
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            important ? "alert-circle" : "megaphone-outline"
+                          }
+                          size={28}
+                          color={important ? "#DC2626" : "#EA580C"}
+                        />
+                      </View>
+                      <View style={styles.announcementContent}>
+                        <Text
+                          style={styles.announcementTitle}
+                          numberOfLines={2}
+                        >
+                          {item.title}
+                        </Text>
+                        <Text
+                          style={styles.announcementMessage}
+                          numberOfLines={3}
+                        >
+                          {item.message}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              }}
+            />
+
+            {/* ================= PAGINATION DOTS ================= */}
+            {announcements.length > 1 && (
+              <View style={styles.paginationDots}>
+                {announcements.map((_, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => {
+                      carouselRef.current?.scrollToIndex({ index });
+                      setActiveIndex(index);
+                    }}
+                    style={[
+                      styles.dot,
+                      activeIndex === index && styles.dotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
         {/* ================= BEST DEALS ================= */}
         <BestDealsScreen />
 
@@ -512,7 +543,7 @@ const styles = StyleSheet.create({
   announcementHeading: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 20,
   },
 
   announcementHeadingIcon: {
@@ -550,7 +581,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
-    padding: 15,
+    padding: 20,
+    gap: 16,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#FED7AA",
@@ -558,6 +590,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 180,
   },
 
   announcementCardImportant: {
@@ -566,25 +601,29 @@ const styles = StyleSheet.create({
   },
 
   announcementIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFF7ED",
-    marginRight: 12,
+    marginBottom: 14,
   },
 
   announcementIconImportant: { backgroundColor: "#FEF2F2" },
 
-  announcementContent: { flex: 1 },
+  announcementContent: { flex: 1, width: "100%", height: "100%" },
   announcementTitle: {
     color: "#111827",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  announcementMessage: { color: "#6B7280", fontSize: 14, lineHeight: 20 },
+  announcementMessage: {
+    color: "#6B7280",
+    fontSize: 14,
+    lineHeight: 21,
+  },
 
   carouselImage: {
     width: "100%",
