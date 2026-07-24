@@ -6,9 +6,13 @@ import RecentActivities from "@/components/user/recent-activities";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, usePathname, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Dimensions,
+  FlatList,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -41,6 +45,20 @@ type GiftCode = {
   }[];
 };
 
+type AnnouncementType = "text" | "image";
+
+type Announcement = {
+  _id: string;
+  title?: string;
+  message?: string;
+  imageUrl?: string;
+  type: AnnouncementType;
+  createdAt?: string;
+  expiresAt?: string;
+  duration?: number;
+  priority?: "info" | "success" | "warning" | "important";
+};
+
 const THEME = "rgb(1, 107, 1)";
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}`;
 
@@ -62,6 +80,12 @@ export default function HomeScreen() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [giftCodes, setGiftCodes] = useState<GiftCode[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const carouselRef = useRef<FlatList<Announcement>>(null);
+  const { width: screenWidth } = Dimensions.get("window");
+  const CAROUSEL_WIDTH = screenWidth - 32; // 16px padding on each side
 
   const currentHour = new Date().getHours();
 
@@ -111,12 +135,33 @@ export default function HomeScreen() {
       console.log("GiftCode fetch error:", error);
     }
   };
+
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/mobile/announcements`, {
+        headers: { "x-user-email": user?.email || "" },
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        setAnnouncements(
+          Array.isArray(data) ? data : data.announcements || data.data || [],
+        );
+      }
+    } catch (error) {
+      console.log("Announcement fetch error:", error);
+    }
+  };
   // ================= LOAD ACTIVITIES =================
   const loadActivities = async () => {
     try {
       setActivitiesLoading(true);
 
-      await Promise.all([fetchPayouts(), fetchGiftCodes()]);
+      await Promise.all([
+        fetchPayouts(),
+        fetchGiftCodes(),
+        fetchAnnouncements(),
+      ]);
     } catch (error) {
       console.log(error);
     } finally {
@@ -208,6 +253,113 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
+
+        {announcements.length > 0 && (
+          <View style={styles.announcementSection}>
+            <View style={styles.announcementHeading}>
+              <View style={styles.announcementHeadingIcon}>
+                <Ionicons name="megaphone" size={18} color="#EA580C" />
+              </View>
+              <Text style={styles.announcementSectionTitle}>Announcements</Text>
+              <View style={styles.livePill}>
+                <Text style={styles.livePillText}>LIVE</Text>
+              </View>
+            </View>
+
+            {/* ================= CAROUSEL (FlatList horizontal) ================= */}
+            <FlatList
+              ref={carouselRef}
+              data={announcements}
+              keyExtractor={(item) => item._id}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={CAROUSEL_WIDTH}
+              decelerationRate="fast"
+              snapToAlignment="start"
+              contentContainerStyle={{ paddingRight: 16 }}
+              onMomentumScrollEnd={(
+                event: NativeSyntheticEvent<NativeScrollEvent>,
+              ) => {
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x / CAROUSEL_WIDTH,
+                );
+                setActiveIndex(index);
+              }}
+              renderItem={({ item }) => {
+                const isImage = item.type === "image";
+                const important = item.priority === "important";
+
+                if (isImage && item.imageUrl) {
+                  // Full-width image card
+                  return (
+                    <View style={{ width: CAROUSEL_WIDTH }}>
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.carouselImage}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  );
+                }
+
+                // Text card
+                return (
+                  <View style={{ width: CAROUSEL_WIDTH, paddingRight: 12 }}>
+                    <View
+                      style={[
+                        styles.announcementCard,
+                        important && styles.announcementCardImportant,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.announcementIcon,
+                          important && styles.announcementIconImportant,
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            important ? "alert-circle" : "megaphone-outline"
+                          }
+                          size={23}
+                          color={important ? "#DC2626" : "#EA580C"}
+                        />
+                      </View>
+                      <View style={styles.announcementContent}>
+                        <Text style={styles.announcementTitle}>
+                          {item.title}
+                        </Text>
+                        <Text style={styles.announcementMessage}>
+                          {item.message}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              }}
+            />
+
+            {/* ================= PAGINATION DOTS ================= */}
+            {announcements.length > 1 && (
+              <View style={styles.paginationDots}>
+                {announcements.map((_, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => {
+                      carouselRef.current?.scrollToIndex({ index });
+                      setActiveIndex(index);
+                    }}
+                    style={[
+                      styles.dot,
+                      activeIndex === index && styles.dotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ================= BALANCE CARD ================= */}
         <View style={styles.balanceCard}>
@@ -351,6 +503,115 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 24,
+  },
+
+  announcementSection: {
+    marginBottom: 22,
+  },
+
+  announcementHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+
+  announcementHeadingIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF7ED",
+    marginRight: 9,
+  },
+
+  announcementSectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1F2937",
+    flex: 1,
+  },
+
+  livePill: {
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+
+  livePillText: {
+    color: "#15803D",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+
+  announcementCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    shadowColor: "#EA580C",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  announcementCardImportant: {
+    borderColor: "#FECACA",
+    backgroundColor: "#FFF9F9",
+  },
+
+  announcementIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF7ED",
+    marginRight: 12,
+  },
+
+  announcementIconImportant: { backgroundColor: "#FEF2F2" },
+
+  announcementContent: { flex: 1 },
+  announcementTitle: {
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  announcementMessage: { color: "#6B7280", fontSize: 14, lineHeight: 20 },
+
+  carouselImage: {
+    width: "100%",
+    height: 190,
+    borderRadius: 18,
+    backgroundColor: "#E5E7EB",
+  },
+
+  paginationDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+    gap: 7,
+  },
+
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#D1D5DB",
+  },
+
+  dotActive: {
+    width: 24,
+    borderRadius: 4,
+    backgroundColor: "#EA580C",
   },
 
   greeting: {
