@@ -23,6 +23,7 @@ const PRIMARY = "rgb(1, 107, 1)";
 const withdrawalOptions = [
   { name: "BNB Smart Chain (BEP20)", image: "bnb.png" },
   { name: "Binance ID", image: "binance_id.webp" },
+  { name: "USDT TRC20", image: "usdt_trc20.png" },
   { name: "MTN Mobile Money", image: "mtn.jpg" },
   { name: "Orange Money", image: "orange.png" },
   { name: "Bank Transfer", image: "bank_transfer.png" },
@@ -99,6 +100,7 @@ const getIcon = (label: string) => {
     case "Requested":
       return "calendar-outline";
     case "Wallet Address":
+    case "USDT TRC20 Wallet Address":
       return "wallet-outline";
     case "Binance ID":
       return "person-outline";
@@ -129,21 +131,7 @@ export default function PayoutDetail() {
   const [payout, setPayout] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-  useFocusEffect(
-    useCallback(() => {
-      fetchData();
-    }, []),
-  );
-  const onRefresh = async () => {
-    setRefreshing(true);
-    fetchData();
-    setRefreshing(false);
-  };
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -170,6 +158,20 @@ export default function PayoutDetail() {
     } finally {
       setLoading(false);
     }
+  }, [API_URL, id, user?.email]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData]),
+  );
+  const onRefresh = async () => {
+    setRefreshing(true);
+    fetchData();
+    setRefreshing(false);
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleString();
@@ -441,6 +443,14 @@ export default function PayoutDetail() {
               label="Binance ID"
               value={payout.accountDetails.binanceId}
               icon={getIcon("Binance ID")}
+            />
+          )}
+
+          {payout.method === "USDT TRC20" && (
+            <InfoRow
+              label="USDT TRC20 Wallet Address"
+              value={payout.accountDetails.usdtTrc20Address}
+              icon={getIcon("USDT TRC20 Wallet Address")}
             />
           )}
 

@@ -46,6 +46,11 @@ const withdrawalOptions = [
     image: "binance_id.webp",
   },
   {
+    id: "usdt_trc20",
+    name: "USDT TRC20",
+    image: "usdt_trc20.png",
+  },
+  {
     id: "mtn",
     name: "MTN Mobile Money",
     image: "mtn.jpg",
@@ -73,7 +78,9 @@ export default function PayoutScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    string | null
+  >(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -88,6 +95,7 @@ export default function PayoutScreen() {
     amount: "",
     bnbAddress: "",
     binanceId: "",
+    usdtTrc20Address: "",
     mobileNumber: "",
     accountName: "",
     bankName: "",
@@ -97,8 +105,9 @@ export default function PayoutScreen() {
   });
 
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const headers = {
         "Content-Type": "application/json",
@@ -120,7 +129,7 @@ export default function PayoutScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [API_URL, user?.email]);
 
   useEffect(() => {
     fetchData();
@@ -136,12 +145,12 @@ export default function PayoutScreen() {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [fetchData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-  }, []);
+  }, [fetchData]);
   useFocusEffect(
     useCallback(() => {
       const run = async () => {
@@ -149,7 +158,7 @@ export default function PayoutScreen() {
       };
 
       run();
-    }, []),
+    }, [fetchData]),
   );
   const router = useRouter();
   const formatDate = (d: string) => {
@@ -180,18 +189,65 @@ export default function PayoutScreen() {
   };
 
   const handleWithdraw = async () => {
-    if (Number(data.amount) < 10) {
+    const trimmedAmount = data.amount.trim();
+    const selectedMethodName =
+      withdrawalOptions.find((e) => e.id === selectedPaymentMethod)?.name || "";
+
+    if (!trimmedAmount) {
+      setError("Please enter the payout amount.");
+      return;
+    }
+
+    if (Number(trimmedAmount) <= 0) {
+      setError("Amount must be greater than 0.");
+      return;
+    }
+
+    if (Number(trimmedAmount) < 10) {
       setError("Minimum withdrawal amount is $10");
       return;
     }
 
-    if (Number(data.amount) > available.available) {
+    if (Number(trimmedAmount) > available.available) {
       setError("Insufficient funds");
+      return;
+    }
+
+    if (!selectedPaymentMethod) {
+      setError("Please select a payment method.");
+      return;
+    }
+
+    if (
+      selectedPaymentMethod === "usdt_trc20" &&
+      !data.usdtTrc20Address.trim()
+    ) {
+      setError("Please enter your USDT TRC20 wallet address.");
       return;
     }
 
     try {
       setSaveLoading(true);
+      setError("");
+      setSuccessMessage("");
+
+      const payload =
+        selectedPaymentMethod === "usdt_trc20"
+          ? {
+              amount: trimmedAmount,
+              method: "USDT TRC20",
+              usdtTrc20Address: data.usdtTrc20Address.trim(),
+            }
+          : {
+              ...data,
+              amount: trimmedAmount,
+              mobileNumber:
+                selectedPaymentMethod === "mtn" ||
+                selectedPaymentMethod === "orange"
+                  ? `${callingCode}${data.mobileNumber.trim()}`
+                  : data.mobileNumber,
+              method: selectedMethodName,
+            };
 
       const res = await fetch(`${API_URL}/api/user/payouts`, {
         method: "POST",
@@ -199,26 +255,24 @@ export default function PayoutScreen() {
           "Content-Type": "application/json",
           "x-user-email": user?.email || "",
         },
-        body: JSON.stringify({
-          ...data,
-          mobileNumber: callingCode + data.mobileNumber,
-          method:
-            withdrawalOptions.find((e) => e.id === selectedOption)?.name || "",
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = await res.json();
 
       if (result.success) {
-        setModalVisible(false);
+        setSuccessMessage("Withdrawal request submitted successfully.");
         Toast.show({
           type: "success",
           text1: "Withdrawal request submitted successfully.",
         });
+
+        setModalVisible(false);
         setData({
           amount: "",
           bnbAddress: "",
           binanceId: "",
+          usdtTrc20Address: "",
           mobileNumber: "",
           accountName: "",
           bankName: "",
@@ -227,18 +281,20 @@ export default function PayoutScreen() {
           iban: "",
         });
 
-        setSelectedOption(null);
+        setSelectedPaymentMethod(null);
         setError("");
 
         fetchData();
       } else {
+        setError(result?.message || "Request failed");
         Toast.show({
           type: "error",
-          text1: "Request failed",
+          text1: result?.message || "Request failed",
         });
       }
     } catch (err) {
       console.log(err);
+      setError("Something went wrong. Please try again.");
       Toast.show({
         type: "error",
         text1: "Something went wrong. Please try again.",
@@ -249,31 +305,38 @@ export default function PayoutScreen() {
   };
 
   const disableSubmit = () => {
-    if (!selectedOption) return true;
+    if (!selectedPaymentMethod) return true;
 
-    if (selectedOption === "bnb" && !data.bnbAddress) {
+    if (selectedPaymentMethod === "bnb" && !data.bnbAddress) {
       return true;
     }
 
-    if (selectedOption === "binance_id" && !data.binanceId) {
+    if (selectedPaymentMethod === "binance_id" && !data.binanceId) {
       return true;
     }
 
     if (
-      (selectedOption === "mtn" || selectedOption === "orange") &&
+      selectedPaymentMethod === "usdt_trc20" &&
+      !data.usdtTrc20Address.trim()
+    ) {
+      return true;
+    }
+
+    if (
+      (selectedPaymentMethod === "mtn" || selectedPaymentMethod === "orange") &&
       (!data.accountName || !data.mobileNumber)
     ) {
       return true;
     }
 
     if (
-      selectedOption === "bank_transfer" &&
+      selectedPaymentMethod === "bank_transfer" &&
       (!data.bankName || !data.accountNumber || !data.accountName)
     ) {
       return true;
     }
 
-    if (!data.amount) {
+    if (!data.amount.trim()) {
       return true;
     }
 
@@ -326,6 +389,23 @@ export default function PayoutScreen() {
           Withdraw Funds
         </Text>
       </TouchableOpacity>
+
+      {successMessage ? (
+        <View
+          style={{
+            backgroundColor: "#ecfdf5",
+            borderColor: "#86efac",
+            borderWidth: 1,
+            padding: 12,
+            borderRadius: 10,
+            marginBottom: 12,
+          }}
+        >
+          <Text style={{ color: "#166534", fontWeight: "600" }}>
+            {successMessage}
+          </Text>
+        </View>
+      ) : null}
 
       {/* TRANSACTIONS */}
       <Text style={styles.sectionTitle}>Transaction History</Text>
@@ -483,17 +563,22 @@ export default function PayoutScreen() {
             {withdrawalOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
-                onPress={() => setSelectedOption(option.id)}
+                onPress={() => {
+                  setSelectedPaymentMethod(option.id);
+                  setError("");
+                  setSuccessMessage("");
+                }}
                 style={{
                   width: "30%",
                   marginBottom: 12,
                   borderRadius: 14,
-                  borderWidth: selectedOption === option.id ? 2 : 1,
-                  borderColor: selectedOption === option.id ? PRIMARY : "#ddd",
-                  elevation: selectedOption === option.id ? 10 : 1,
+                  borderWidth: selectedPaymentMethod === option.id ? 2 : 1,
+                  borderColor:
+                    selectedPaymentMethod === option.id ? PRIMARY : "#ddd",
+                  elevation: selectedPaymentMethod === option.id ? 10 : 1,
                   padding: 5,
                   backgroundColor:
-                    selectedOption === option.id ? "#f0fff4" : "#fff",
+                    selectedPaymentMethod === option.id ? "#f0fff4" : "#fff",
                 }}
               >
                 <Image
@@ -511,7 +596,7 @@ export default function PayoutScreen() {
             ))}
           </View>
           {/* Selected Method */}
-          {selectedOption && (
+          {selectedPaymentMethod && (
             <>
               <Divider style={{ marginVertical: 20 }} />
               <View
@@ -532,13 +617,17 @@ export default function PayoutScreen() {
                     fontWeight: "700",
                   }}
                 >
-                  {withdrawalOptions.find((e) => e.id === selectedOption)?.name}
+                  {
+                    withdrawalOptions.find(
+                      (e) => e.id === selectedPaymentMethod,
+                    )?.name
+                  }
                 </Text>
               </View>
             </>
           )}
           {/* BNB */}
-          {selectedOption === "bnb" && (
+          {selectedPaymentMethod === "bnb" && (
             <>
               <Text
                 style={{
@@ -570,7 +659,7 @@ export default function PayoutScreen() {
             </>
           )}
           {/* BINANCE ID */}
-          {selectedOption === "binance_id" && (
+          {selectedPaymentMethod === "binance_id" && (
             <>
               <Text
                 style={{
@@ -601,8 +690,43 @@ export default function PayoutScreen() {
               />
             </>
           )}
+          {/* USDT TRC20 */}
+          {selectedPaymentMethod === "usdt_trc20" && (
+            <>
+              <Text
+                style={{
+                  marginTop: 20,
+                  marginBottom: 0,
+                  fontSize: 15,
+                  fontWeight: "600",
+                }}
+              >
+                USDT TRC20 Wallet Address
+              </Text>
+
+              <TextInput
+                placeholder="TQJ1e4N..."
+                value={data.usdtTrc20Address}
+                onChangeText={(text) =>
+                  setData((p) => ({
+                    ...p,
+                    usdtTrc20Address: text,
+                  }))
+                }
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={[
+                  styles.input,
+                  {
+                    marginBottom: 12,
+                  },
+                ]}
+              />
+            </>
+          )}
           {/*MTN / ORANGE*/}
-          {(selectedOption === "mtn" || selectedOption === "orange") && (
+          {(selectedPaymentMethod === "mtn" ||
+            selectedPaymentMethod === "orange") && (
             <>
               <Text
                 style={{
@@ -699,7 +823,7 @@ export default function PayoutScreen() {
           )}
 
           {/*BANK TRANSFER*/}
-          {selectedOption === "bank_transfer" && (
+          {selectedPaymentMethod === "bank_transfer" && (
             <>
               <Text
                 style={{
@@ -842,7 +966,7 @@ export default function PayoutScreen() {
             </>
           )}
           {/*AMOUNT*/}
-          {selectedOption && (
+          {selectedPaymentMethod && (
             <>
               <Text
                 className="mt-6 text-lg"
@@ -902,7 +1026,7 @@ export default function PayoutScreen() {
               {error}
             </Text>
           )}
-          {selectedOption && (
+          {selectedPaymentMethod && (
             <TouchableOpacity
               disabled={disableSubmit() || saveLoading}
               onPress={handleWithdraw}

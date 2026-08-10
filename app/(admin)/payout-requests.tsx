@@ -30,6 +30,7 @@ interface PayoutRequest {
     | "Orange Money"
     | "MTN Mobile Money"
     | "Binance ID"
+    | "USDT TRC20"
     | "BNB Smart Chain (BEP20)"
     | "Bank Transfer";
 
@@ -37,6 +38,7 @@ interface PayoutRequest {
     mobileNumber?: string;
     accountName?: string;
     binanceId?: string;
+    usdtTrc20Address?: string;
     bnbAddress?: string;
     bankName?: string;
     accountNumber?: string;
@@ -76,49 +78,49 @@ export default function PayoutRequestsScreen() {
 
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRequests = async (
-    targetPage: number,
-    mode: "replace" | "append",
-  ) => {
-    try {
-      setError(null);
+  const fetchRequests = useCallback(
+    async (targetPage: number, mode: "replace" | "append") => {
+      try {
+        setError(null);
 
-      if (mode === "append") setLoadingMore(true);
-      else setLoading(true);
+        if (mode === "append") setLoadingMore(true);
+        else setLoading(true);
 
-      const res = await fetch(
-        `${API_URL}/api/admin/payout-requests?page=${targetPage}&limit=${limit}&search=${search}&status=${status}&method=${method}&new=${onlyNew}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "x-user-email": user?.email || "",
+        const res = await fetch(
+          `${API_URL}/api/admin/payout-requests?page=${targetPage}&limit=${limit}&search=${search}&status=${status}&method=${method}&new=${onlyNew}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-email": user?.email || "",
+            },
           },
-        },
-      );
+        );
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch data");
+        if (!res.ok) {
+          throw new Error("Failed to fetch data");
+        }
+
+        const data = await res.json();
+
+        if (mode === "replace") {
+          setRequests(data.requests);
+        } else {
+          setRequests((prev) => [...prev, ...data.requests]);
+        }
+
+        setHasMore(data.requests.length === limit);
+        setPage(targetPage);
+      } catch (err: any) {
+        console.log("Fetch error:", err.message);
+
+        setError("No internet connection or server error");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-
-      const data = await res.json();
-
-      if (mode === "replace") {
-        setRequests(data.requests);
-      } else {
-        setRequests((prev) => [...prev, ...data.requests]);
-      }
-
-      setHasMore(data.requests.length === limit);
-      setPage(targetPage);
-    } catch (err: any) {
-      console.log("Fetch error:", err.message);
-
-      setError("No internet connection or server error");
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+    },
+    [API_URL, limit, method, onlyNew, search, status, user?.email],
+  );
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -126,12 +128,12 @@ export default function PayoutRequestsScreen() {
     }, 400);
     fetchRequests(1, "replace");
     return () => clearTimeout(t);
-  }, [search, status, method, onlyNew]);
+  }, [fetchRequests]);
 
   useFocusEffect(
     useCallback(() => {
       fetchRequests(1, "replace");
-    }, []),
+    }, [fetchRequests]),
   );
 
   const onRefresh = async () => {
@@ -177,9 +179,9 @@ export default function PayoutRequestsScreen() {
 
         <Text
           className={
-            item.status == "pending"
+            item.status === "pending"
               ? " text-yellow-500"
-              : item.status == "completed"
+              : item.status === "completed"
                 ? " text-green-500"
                 : "text-red-500"
           }
@@ -202,6 +204,10 @@ export default function PayoutRequestsScreen() {
 
       {item.method === "BNB Smart Chain (BEP20)" ? (
         <Text>{item.accountDetails.bnbAddress}</Text>
+      ) : null}
+
+      {item.method === "USDT TRC20" ? (
+        <Text>🟡 {item.accountDetails.usdtTrc20Address}</Text>
       ) : null}
 
       {item.method === "Bank Transfer" ? (
@@ -288,6 +294,8 @@ export default function PayoutRequestsScreen() {
     </View>
   ));
 
+  Card.displayName = "PayoutRequestCard";
+
   return (
     <>
       <View style={{ padding: 10 }}>
@@ -328,25 +336,29 @@ export default function PayoutRequestsScreen() {
           >
             <Menu.Item
               onPress={() => {
-                (setStatus(""), setStatusMenu(false));
+                setStatus("");
+                setStatusMenu(false);
               }}
               title="All"
             />
             <Menu.Item
               onPress={() => {
-                (setStatus("pending"), setStatusMenu(false));
+                setStatus("pending");
+                setStatusMenu(false);
               }}
               title="Pending"
             />
             <Menu.Item
               onPress={() => {
-                (setStatus("completed"), setStatusMenu(false));
+                setStatus("completed");
+                setStatusMenu(false);
               }}
               title="Completed"
             />
             <Menu.Item
               onPress={() => {
-                (setStatus("rejected"), setStatusMenu(false));
+                setStatus("rejected");
+                setStatusMenu(false);
               }}
               title="Rejected"
             />
@@ -367,36 +379,51 @@ export default function PayoutRequestsScreen() {
           >
             <Menu.Item
               onPress={() => {
-                (setMethod(""), setMethodMenu(false));
+                setMethod("");
+                setMethodMenu(false);
               }}
               title="All"
             />
             <Menu.Item
               onPress={() => {
-                (setMethod("Orange Money"), setMethodMenu(false));
+                setMethod("Orange Money");
+                setMethodMenu(false);
               }}
               title="Orange Money"
             />
             <Menu.Item
               onPress={() => {
-                (setMethod("MTN Mobile Money"), setMethodMenu(false));
+                setMethod("MTN Mobile Money");
+                setMethodMenu(false);
               }}
               title="MTN Mobile Money"
             />
             <Menu.Item
               onPress={() => {
-                (setMethod("Binance ID"), setMethodMenu(false));
+                setMethod("Binance ID");
+                setMethodMenu(false);
               }}
               title="Binance ID"
             />
             <Menu.Item
               onPress={() => {
-                (setMethod("BNB Smart Chain (BEP20)"), setMethodMenu(false));
+                setMethod("USDT TRC20");
+                setMethodMenu(false);
+              }}
+              title="USDT TRC20"
+            />
+            <Menu.Item
+              onPress={() => {
+                setMethod("BNB Smart Chain (BEP20)");
+                setMethodMenu(false);
               }}
               title="BNB Smart Chain"
             />
             <Menu.Item
-              onPress={() => (setMethod("Bank Transfer"), setMethodMenu(false))}
+              onPress={() => {
+                setMethod("Bank Transfer");
+                setMethodMenu(false);
+              }}
               title="Bank Transfer"
             />
           </Menu>
@@ -439,6 +466,8 @@ export default function PayoutRequestsScreen() {
           ) : null}
         </View>
       </View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <FlatList
         data={requests}
@@ -600,5 +629,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     backgroundColor: "white",
+  },
+  errorText: {
+    color: "#dc2626",
+    fontSize: 13,
+    paddingHorizontal: 12,
+    paddingTop: 8,
   },
 });
