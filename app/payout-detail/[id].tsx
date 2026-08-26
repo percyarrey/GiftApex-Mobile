@@ -4,7 +4,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +23,7 @@ const PRIMARY = "rgb(1, 107, 1)";
 const withdrawalOptions = [
   { name: "BNB Smart Chain (BEP20)", image: "bnb.png" },
   { name: "Binance ID", image: "binance_id.webp" },
-  { name: "USDT TRC20", image: "usdt_trc20.png" },
+  { name: "USDT TRC20", image: "usdt.png" },
   { name: "MTN Mobile Money", image: "mtn.jpg" },
   { name: "Orange Money", image: "orange.png" },
   { name: "Bank Transfer", image: "bank_transfer.png" },

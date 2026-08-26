@@ -141,6 +141,7 @@ export default function LoginScreen() {
         text1: "Error",
         text2: error.message || "Something went wrong",
       });
+      console.log("Google login error:", error);
     } finally {
       setLoading(false);
     }

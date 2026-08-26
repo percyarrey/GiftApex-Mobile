@@ -2,7 +2,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -48,7 +48,7 @@ const withdrawalOptions = [
   {
     id: "usdt_trc20",
     name: "USDT TRC20",
-    image: "usdt_trc20.png",
+    image: "usdt.png",
   },
   {
     id: "mtn",

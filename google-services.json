@@ -12,7 +12,20 @@
           "package_name": "com.percy.giftapex"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "935549762734-1urhlgeljhrsvk8tsbblki86pfhd9iro.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.percy.giftapex",
+            "certificate_hash": "6a63479cdd98b2ac26d1ec68967c87cec3e6239d"
+          }
+        },
+        {
+          "client_id": "935549762734-902qjfd6mfhg2l523iova7o1ukca1uo6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDAtEqcHGyxs8sgNwsTUq4msMHUTH0azXw"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "935549762734-902qjfd6mfhg2l523iova7o1ukca1uo6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "935549762734-2kc3gk8fdcth584377acnquipc6h8lj4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.percy.giftapex"
+              }
+            }
+          ]
         }
       }
     }
